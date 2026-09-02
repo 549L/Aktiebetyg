@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 server.log
+cloudflared.log
 data/history.json
 .venv/
 venv/

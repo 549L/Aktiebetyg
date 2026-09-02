@@ -623,6 +623,12 @@ ul li:last-child {
     font-weight: 700;
 }
 
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -648,3 +654,66 @@ th {
 .metric-value.good, .metric-score.good { color: var(--green); font-weight: 600; }
 .metric-value.medium, .metric-score.medium { color: var(--yellow); font-weight: 600; }
 .metric-value.bad, .metric-score.bad { color: var(--red); font-weight: 600; }
+
+/* Mobilanpassning - desktop-utseendet (>600px) rörs inte alls här, samma
+   brytpunkt som .top-panels/.columns redan använder ovan. Formuläret,
+   resultatkortets header och nyckeltalstabellen är det som annars kläms
+   ihop/svämmar över på en telefonbredd (~360-430px). */
+@media (max-width: 600px) {
+    main {
+        padding: 28px 16px 60px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    #search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .view-style-toggle {
+        width: 100%;
+    }
+
+    .view-style-btn {
+        flex: 1;
+    }
+
+    #search-form > button[type="submit"] {
+        width: 100%;
+    }
+
+    .result-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .badge-stack {
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .fear-greed-badge {
+        flex-wrap: wrap;
+    }
+
+    .score-badge {
+        font-size: 1.3rem;
+        padding: 8px 16px;
+    }
+
+    #top10, #industries-panel {
+        padding: 16px 18px;
+    }
+
+    table {
+        font-size: 0.8rem;
+    }
+
+    th, td {
+        padding: 7px 5px;
+    }
+}
