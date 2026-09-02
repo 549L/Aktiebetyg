@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aktiebetyg</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <h1>Aktiebetyg</h1>
+        <p class="subtitle">Skriv in ett bolagsnamn eller en ticker (t.ex. Volvo, Ericsson, AAPL) och få ett betyg 1-100 baserat på nyckeltal.</p>
+
+        <form id="search-form">
+            <div class="view-style-toggle" id="view-style-toggle" role="group" aria-label="Betygsvy">
+                <button type="button" data-style="growth" class="view-style-btn" aria-pressed="false">Tillväxtbolag</button>
+                <button type="button" data-style="stability" class="view-style-btn" aria-pressed="false">Stabila bolag</button>
+            </div>
+            <div class="input-wrapper">
+                <input type="text" id="ticker-input" placeholder="Bolagsnamn eller ticker, t.ex. Volvo" autocomplete="off">
+                <ul id="suggestions" class="suggestions hidden"></ul>
+            </div>
+            <button type="submit">Analysera</button>
+        </form>
+
+        <div id="industry-filter-chip" class="filter-chip hidden">
+            Filtrerar sökning på bransch: <strong id="industry-filter-label"></strong>
+            <button type="button" id="industry-filter-clear" aria-label="Rensa filter">✕</button>
+        </div>
+
+        <div class="top-panels">
+            <section id="top10">
+                <h3>Senast sökta</h3>
+                <ol id="top10-list"></ol>
+                <p id="top10-empty" class="muted hidden">Inga analyserade aktier än — sök på en aktie för att komma igång.</p>
+            </section>
+
+            <section id="industries-panel">
+                <h3>Branscher</h3>
+                <ul id="industries-list"></ul>
+                <p id="industries-empty" class="muted hidden">Inga analyserade aktier än.</p>
+            </section>
+        </div>
+
+        <div id="status"></div>
+
+        <section id="result" class="hidden">
+            <div class="result-header">
+                <div>
+                    <h2 id="company-name"></h2>
+                    <span id="ticker-price"></span>
+                    <span id="ticker-industry" class="industry-tag"></span>
+                </div>
+                <div class="badge-stack">
+                    <div class="score-badge" id="score-badge">
+                        <span id="score-value"></span>
+                        <span class="score-label">/ 100</span>
+                    </div>
+                    <div id="fear-greed-badge" class="fear-greed-badge hidden">
+                        <span class="fear-greed-title">Fear &amp; Greed</span>
+                        <span id="fear-greed-value" class="fear-greed-value"></span>
+                        <span id="fear-greed-rating" class="fear-greed-rating"></span>
+                    </div>
+                </div>
+            </div>
+
+            <p id="company-description" class="description"></p>
+
+            <div class="chart-card">
+                <div class="chart-controls">
+                    <div class="chart-ranges" id="chart-ranges">
+                        <button type="button" data-period="1d">Dag</button>
+                        <button type="button" data-period="1w">Vecka</button>
+                        <button type="button" data-period="1y" class="active">1 år</button>
+                        <button type="button" data-period="5y">5 år</button>
+                        <button type="button" data-period="10y">10 år</button>
+                    </div>
+                    <button type="button" id="macd-toggle" class="indicator-toggle" aria-pressed="false">MACD (12, 26, 9)</button>
+                </div>
+                <svg id="chart-svg" viewBox="0 0 640 220" preserveAspectRatio="none"></svg>
+                <svg id="macd-svg" viewBox="0 0 640 110" preserveAspectRatio="none" class="hidden"></svg>
+            </div>
+
+            <div class="columns">
+                <div class="col">
+                    <h3>Positivt</h3>
+                    <ul id="positives-list" class="positives"></ul>
+                </div>
+                <div class="col">
+                    <h3>Negativt</h3>
+                    <ul id="negatives-list" class="negatives"></ul>
+                </div>
+            </div>
+
+            <h3>Nyckeltal i betygsskalan <span id="scale-label" class="scale-label"></span></h3>
+            <table id="metrics-table">
+                <thead>
+                    <tr><th>Nyckeltal</th><th>Värde</th><th>Idealvärde</th><th>Delbetyg</th><th>Vikt</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+server.log
+data/history.json
+.venv/
+venv/
