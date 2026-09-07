@@ -8,9 +8,13 @@ Används just nu för att översätta bolagens engelska verksamhetsbeskrivning
 till svenska.
 """
 
+import os
 import time
 
 from curl_cffi import requests as creq
+
+# Se yahoo_client.py för varför den här finns.
+_PROXY_URL = os.environ.get("DATAIMPULSE_PROXY")
 
 
 def translate_to_swedish(text: str) -> str:
@@ -23,6 +27,8 @@ def translate_to_swedish(text: str) -> str:
     for attempt in range(4):
         try:
             session = creq.Session(impersonate="chrome")
+            if _PROXY_URL:
+                session.proxies = {"http": _PROXY_URL, "https": _PROXY_URL}
             resp = session.get(
                 "https://translate.googleapis.com/translate_a/single",
                 params={"client": "gtx", "sl": "en", "tl": "sv", "dt": "t", "q": text},

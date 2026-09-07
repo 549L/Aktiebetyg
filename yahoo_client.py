@@ -11,6 +11,7 @@ ett crumb + cookies, och slår sedan upp nyckeltal för en ticker som platt
 JSON, utan att någonsin importera pandas.
 """
 
+import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,6 +19,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from curl_cffi import requests as creq
 
 from config.industries import translate_sector, translate_industry
+
+# Yahoo Finance blockerar molnleverantörers IP-adresser (Render m.fl.) med
+# 429/401-fel. Sätts miljövariabeln DATAIMPULSE_PROXY (t.ex.
+# "http://användare:lösenord@gw.dataimpulse.com:823") routas alla anrop via
+# en proxy istället, så det ser ut som vanlig hemtrafik för Yahoo. Lokalt
+# (ingen miljövariabel satt) går anropen direkt, precis som innan.
+_PROXY_URL = os.environ.get("DATAIMPULSE_PROXY")
 
 _MODULES = "defaultKeyStatistics,financialData,summaryDetail,price,assetProfile"
 
@@ -67,6 +75,8 @@ def _new_session():
     extra requests per anrop, men det är värt det för pålitligheten.
     """
     session = creq.Session(impersonate="chrome")
+    if _PROXY_URL:
+        session.proxies = {"http": _PROXY_URL, "https": _PROXY_URL}
     session.get("https://fc.yahoo.com", timeout=10)
     crumb = session.get(
         "https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=10
