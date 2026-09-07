@@ -98,8 +98,8 @@ def _search_candidates(query: str, pool_size: int) -> list:
     """
     quotes = []
     for attempt in range(4):
-        session, _ = _new_session()
         try:
+            session, _ = _new_session()
             resp = session.get(
                 "https://query1.finance.yahoo.com/v1/finance/search",
                 params={"q": query, "quotesCount": pool_size, "newsCount": 0},
@@ -202,8 +202,8 @@ def get_info(ticker: str) -> dict:
     """
     results = None
     for attempt in range(4):
-        session, crumb = _new_session()
         try:
+            session, crumb = _new_session()
             resp = session.get(
                 f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}",
                 params={"modules": _MODULES, "crumb": crumb},
@@ -241,8 +241,8 @@ def get_chart_data(ticker: str, period: str = "1y") -> dict:
 
     result = None
     for attempt in range(4):
-        session, _ = _new_session()
         try:
+            session, _ = _new_session()
             resp = session.get(
                 f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
                 params={"range": params["range"], "interval": params["interval"]},
