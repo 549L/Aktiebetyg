@@ -45,10 +45,19 @@ main {
 }
 
 h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin: 0 0 4px;
     font-size: 2rem;
     color: var(--accent);
     transition: color 0.2s ease;
+}
+
+.brand-icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
 }
 
 .subtitle {
