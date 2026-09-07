@@ -6,6 +6,7 @@ Du behöver normalt inte ändra i den här filen - lägg istället till/ändra
 nyckeltal i config/metrics.py.
 """
 
+import concurrent.futures
 import math
 import re
 
@@ -265,9 +266,19 @@ def analyze_ticker(ticker: str, view_style: str = None):
     if not _has_price(info):
         return {"error": f"Hittade ingen data för '{ticker}'. Kontrollera stavningen, eller välj ett förslag i listan."}
 
-    signals = get_stock_signals(resolved_ticker)
+    # Kursdata (Fear & Greed/MA200/graf) och textöversättningen är helt
+    # oberoende av varandra - kör dem parallellt istället för i sekvens.
+    # Sparar flera sekunder per analys, mest märkbart när anropen går via en
+    # proxy (se yahoo_client.py) där varje nätverksanrop kostar extra tid.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        signals_future = executor.submit(get_stock_signals, resolved_ticker)
+        description_future = executor.submit(_short_description, info.get("longBusinessSummary") or "")
+        signals = signals_future.result()
+        description = description_future.result()
+
     fear_greed = signals["fear_greed"]
     ma200 = signals["ma200"]
+    chart = signals["chart"]
     computed = _computed_fields(info, fear_greed, ma200)
 
     raw_sector = info.get("sector") or ""
@@ -309,11 +320,12 @@ def analyze_ticker(ticker: str, view_style: str = None):
         "currency": info.get("currency", ""),
         "sector": translate_sector(raw_sector),
         "industry": translate_industry(raw_industry, raw_sector),
-        "description": _short_description(info.get("longBusinessSummary") or ""),
+        "description": description,
         "scale": profile["label"],
         "view_style": view_style if view_style in _VIEW_LABELS else None,
         "view_style_label": _VIEW_LABELS.get(view_style),
         "fear_greed": fear_greed,
+        "chart": chart,
         "score": round(overall_score) if overall_score is not None else None,
         "metrics": [
             {

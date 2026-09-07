@@ -80,11 +80,17 @@ def _ma200_signal(closes: list, current: float):
 def get_stock_signals(ticker: str) -> dict:
     """Hämtar ett års kurshistorik EN gång och räknar ut både Fear & Greed
     och MA200-signalen från den. Returnerar {"fear_greed": {...} | None,
-    "ma200": {...} | None}."""
+    "ma200": {...} | None, "chart": {...}}.
+
+    "chart" är samma 1-års kursdata som redan hämtats här, vidarebefordrad
+    så att /api/analyze kan skicka med den direkt i sitt svar - då slipper
+    frontend göra ett till (identiskt) nätverksanrop till /api/chart bara
+    för att rita startgrafen. Sparar särskilt mycket tid när anropen går via
+    en proxy (se yahoo_client.py) där varje extra request kostar sekunder."""
     chart = get_chart_data(ticker, "1y")
     closes = [p["close"] for p in chart.get("points", [])]
     if len(closes) < 15:
-        return {"fear_greed": None, "ma200": None}
+        return {"fear_greed": None, "ma200": None, "chart": chart}
 
     current = closes[-1]
 
@@ -97,4 +103,4 @@ def get_stock_signals(ticker: str) -> dict:
 
     ma200 = _ma200_signal(closes, current)
 
-    return {"fear_greed": fear_greed, "ma200": ma200}
+    return {"fear_greed": fear_greed, "ma200": ma200, "chart": chart}

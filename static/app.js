@@ -358,7 +358,14 @@ function renderResult(data) {
     result.classList.remove("hidden");
 
     currentTicker = data.ticker;
-    loadChart(currentTicker, currentChartPeriod);
+    if (currentChartPeriod === "1y" && data.chart) {
+        // /api/analyze skickar redan med ett års kursdata (den hämtas ändå
+        // internt för Fear & Greed/MA200) - slipper då ett extra
+        // nätverksanrop för att rita startgrafen.
+        drawChart(data.chart, "1y");
+    } else {
+        loadChart(currentTicker, currentChartPeriod);
+    }
 }
 
 let currentTicker = null;
@@ -518,12 +525,22 @@ function renderMACD() {
 }
 
 async function loadChart(ticker, period) {
+    try {
+        const res = await fetch(`/api/chart/${encodeURIComponent(ticker)}?period=${period}`);
+        const data = await res.json();
+        drawChart(data, period);
+    } catch (err) {
+        chartSvg.innerHTML = "";
+        currentChart = null;
+        renderMACD();
+    }
+}
+
+function drawChart(data, period) {
     chartSvg.innerHTML = "";
     currentChart = null;
 
     try {
-        const res = await fetch(`/api/chart/${encodeURIComponent(ticker)}?period=${period}`);
-        const data = await res.json();
         const points = data.points || [];
         if (points.length < 2) return;
 
