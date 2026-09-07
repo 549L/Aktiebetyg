@@ -84,6 +84,18 @@ def _new_session():
     return session, crumb
 
 
+def _light_session():
+    """Session UTAN cookie-priming/crumb - sök-endpointen kräver ingen av
+    dem (till skillnad från quoteSummary i get_info), så vi slipper två
+    onödiga requests per sökning. Märks mest med en proxy (DATAIMPULSE_PROXY)
+    där varje extra request lägger på flera sekunders latens - autocomplete
+    kändes trögt innan detta."""
+    session = creq.Session(impersonate="chrome")
+    if _PROXY_URL:
+        session.proxies = {"http": _PROXY_URL, "https": _PROXY_URL}
+    return session
+
+
 def _unwrap(value):
     """Yahoo returnerar de flesta tal som {"raw": x, "fmt": "..."}."""
     if isinstance(value, dict):
@@ -99,7 +111,7 @@ def _search_candidates(query: str, pool_size: int) -> list:
     quotes = []
     for attempt in range(4):
         try:
-            session, _ = _new_session()
+            session = _light_session()
             resp = session.get(
                 "https://query1.finance.yahoo.com/v1/finance/search",
                 params={"q": query, "quotesCount": pool_size, "newsCount": 0},
@@ -242,7 +254,7 @@ def get_chart_data(ticker: str, period: str = "1y") -> dict:
     result = None
     for attempt in range(4):
         try:
-            session, _ = _new_session()
+            session = _light_session()
             resp = session.get(
                 f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
                 params={"range": params["range"], "interval": params["interval"]},
