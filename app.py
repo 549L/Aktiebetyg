@@ -7,6 +7,42 @@ from history_store import record_result, recent_n, distinct_industries
 app = Flask(__name__)
 
 
+@app.route("/api/_debug_proxy")
+def _debug_proxy():
+    """Tillfällig diagnos-route för att se om DATAIMPULSE_PROXY faktiskt
+    används och fungerar mot Yahoo från produktionsservern. Tas bort igen
+    när felsökningen är klar."""
+    import os
+    from curl_cffi import requests as creq
+
+    proxy_url = os.environ.get("DATAIMPULSE_PROXY")
+    info = {"proxy_set": bool(proxy_url)}
+    if proxy_url:
+        masked = proxy_url.split("@")[-1]
+        info["proxy_host_seen"] = masked
+    try:
+        session = creq.Session(impersonate="chrome")
+        if proxy_url:
+            session.proxies = {"http": proxy_url, "https": proxy_url}
+        r1 = session.get("https://fc.yahoo.com", timeout=15)
+        info["fc_status"] = r1.status_code
+        r2 = session.get("https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=15)
+        info["crumb_status"] = r2.status_code
+        info["crumb_text"] = r2.text[:200]
+        r3 = session.get(
+            "https://query1.finance.yahoo.com/v10/finance/quoteSummary/AAPL",
+            params={"modules": "price", "crumb": r2.text},
+            timeout=15,
+        )
+        info["quote_status"] = r3.status_code
+        info["quote_body"] = r3.text[:500]
+        r4 = session.get("https://api.ipify.org?format=json", timeout=15)
+        info["outbound_ip"] = r4.text[:200]
+    except Exception as exc:
+        info["exception"] = f"{type(exc).__name__}: {exc}"
+    return jsonify(info)
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
