@@ -58,6 +58,7 @@
 
         <section id="scales-panel">
             <h3>Mina betygsskalor</h3>
+            <input type="text" id="scales-search" placeholder="Sök betygsskalor..." autocomplete="off">
             <ul id="scales-list"></ul>
             <button type="button" id="create-scale-btn">+ Skapa egen betygsskala</button>
         </section>
@@ -128,10 +129,16 @@
             <button type="button" id="scale-editor-back" class="editor-back-btn">← Tillbaka</button>
             <h2 id="scale-editor-title">Skapa egen betygsskala</h2>
 
-            <label class="editor-field">
-                Namn på skalan
-                <input type="text" id="scale-name-input" placeholder="T.ex. Min utdelningsskala">
-            </label>
+            <div class="editor-name-row">
+                <label class="editor-field">
+                    Namn på skalan
+                    <input type="text" id="scale-name-input" placeholder="T.ex. Min utdelningsskala">
+                </label>
+                <label class="editor-field editor-color-field">
+                    Färg
+                    <input type="color" id="scale-color-input" value="#f5c518">
+                </label>
+            </div>
 
             <div id="scale-sector-tabs" class="scale-sector-tabs" role="tablist"></div>
 

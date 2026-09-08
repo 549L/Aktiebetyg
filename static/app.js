@@ -601,44 +601,98 @@ const BUILTIN_SCALES = [
     { id: "default", name: "549L Vanliga bolag" },
 ];
 
+// Listan visar bara de MAX_VISIBLE_SCALES högst rankade skalorna (obetygsatta
+// sist) - sökrutan går igenom ALLA skalor utan den gränsen, så en skala som
+// inte råkar ligga i topp-5 ändå går att hitta och välja.
+const MAX_VISIBLE_SCALES = 5;
+
 let currentScaleId = "default";
 let customScales = [];
+let scaleRatings = {}; // { rawId: {average, count} }
+let scalesSearchQuery = "";
 
 const scalesListEl = document.getElementById("scales-list");
 const createScaleBtn = document.getElementById("create-scale-btn");
+const scalesSearchInput = document.getElementById("scales-search");
+
+function allScaleEntries() {
+    const builtin = BUILTIN_SCALES.map((s) => ({ rawId: s.id, scaleId: s.id, name: s.name, isCustom: false, color: null }));
+    const custom = customScales.map((s) => ({ rawId: s.id, scaleId: `custom:${s.id}`, name: s.name, isCustom: true, color: s.color }));
+    return [...builtin, ...custom];
+}
 
 async function loadScales() {
     try {
-        const res = await fetch("/api/scales");
-        customScales = await res.json();
+        const [scalesRes, ratingsRes] = await Promise.all([
+            fetch("/api/scales"),
+            fetch("/api/ratings"),
+        ]);
+        customScales = await scalesRes.json();
+        scaleRatings = await ratingsRes.json();
     } catch (err) {
         customScales = [];
+        scaleRatings = {};
     }
     renderScalesList();
 }
 
-function renderScalesList() {
-    scalesListEl.innerHTML = "";
-    BUILTIN_SCALES.forEach((scale) => {
-        scalesListEl.appendChild(buildScaleRow(scale.id, scale.name, false));
-    });
-    customScales.forEach((scale) => {
-        scalesListEl.appendChild(buildScaleRow(`custom:${scale.id}`, scale.name, true));
-    });
+function ratingFor(rawId) {
+    return scaleRatings[rawId] || { average: null, count: 0 };
 }
 
-function buildScaleRow(scaleId, name, isCustom) {
+function renderScalesList() {
+    scalesListEl.innerHTML = "";
+
+    let entries = allScaleEntries();
+    const q = scalesSearchQuery.trim().toLowerCase();
+    if (q) {
+        entries = entries.filter((e) => e.name.toLowerCase().includes(q));
+    }
+
+    // Högst betygsatta överst. Obetygsatta (average null) sorteras sist,
+    // och behåller annars sin ursprungliga ordning (inbyggda skalor först).
+    entries = entries
+        .map((e, i) => ({ ...e, _rating: ratingFor(e.rawId), _order: i }))
+        .sort((a, b) => {
+            const ra = a._rating.average;
+            const rb = b._rating.average;
+            if (ra === null && rb === null) return a._order - b._order;
+            if (ra === null) return 1;
+            if (rb === null) return -1;
+            return rb - ra;
+        });
+
+    if (!q) {
+        entries = entries.slice(0, MAX_VISIBLE_SCALES);
+    }
+
+    if (entries.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "Inga betygsskalor matchade sökningen.";
+        scalesListEl.appendChild(li);
+        return;
+    }
+
+    entries.forEach((entry) => scalesListEl.appendChild(buildScaleRow(entry)));
+}
+
+function buildScaleRow(entry) {
+    const { scaleId, rawId, name, isCustom, color } = entry;
     const li = document.createElement("li");
     li.className = "scale-row" + (scaleId === currentScaleId ? " active" : "");
+
+    const topRow = document.createElement("div");
+    topRow.className = "scale-row-top";
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "scale-row-name";
     nameSpan.textContent = name;
+    if (isCustom && color) nameSpan.style.color = color;
     nameSpan.addEventListener("click", () => selectScale(scaleId));
-    li.appendChild(nameSpan);
+    topRow.appendChild(nameSpan);
 
     if (isCustom) {
-        const rawId = scaleId.slice("custom:".length);
         const actions = document.createElement("span");
         actions.className = "scale-row-actions";
 
@@ -667,16 +721,79 @@ function buildScaleRow(scaleId, name, isCustom) {
         });
         actions.appendChild(deleteBtn);
 
-        li.appendChild(actions);
+        topRow.appendChild(actions);
     }
+
+    li.appendChild(topRow);
+    li.appendChild(buildStarRating(rawId));
 
     return li;
 }
 
+function buildStarRating(rawId) {
+    const wrap = document.createElement("div");
+    wrap.className = "star-rating";
+
+    const rating = ratingFor(rawId);
+    const filled = rating.average !== null ? Math.round(rating.average) : 0;
+
+    for (let i = 1; i <= 5; i++) {
+        const star = document.createElement("button");
+        star.type = "button";
+        star.className = "star" + (i <= filled ? " filled" : "");
+        star.textContent = "★";
+        star.setAttribute("aria-label", `Betygsätt ${i} av 5 stjärnor`);
+        star.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            try {
+                const res = await fetch(`/api/scales/${rawId}/rating`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stars: i }),
+                });
+                scaleRatings[rawId] = await res.json();
+            } catch (err) {
+                // Betyget är en extra funktion - misslyckas anropet lämnas listan bara oförändrad.
+            }
+            renderScalesList();
+        });
+        wrap.appendChild(star);
+    }
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "star-rating-count";
+    countLabel.textContent = rating.count > 0
+        ? `${rating.average.toFixed(1)} (${rating.count})`
+        : "Inga betyg än";
+    wrap.appendChild(countLabel);
+
+    return wrap;
+}
+
+scalesSearchInput.addEventListener("input", () => {
+    scalesSearchQuery = scalesSearchInput.value;
+    renderScalesList();
+});
+
+function applyScaleTheme(scaleId) {
+    document.body.classList.remove("view-growth", "view-stability");
+    document.body.style.removeProperty("--accent");
+    if (scaleId === "growth") {
+        document.body.classList.add("view-growth");
+    } else if (scaleId === "stability") {
+        document.body.classList.add("view-stability");
+    } else if (scaleId.startsWith("custom:")) {
+        const rawId = scaleId.slice("custom:".length);
+        const scale = customScales.find((s) => s.id === rawId);
+        if (scale && scale.color) {
+            document.body.style.setProperty("--accent", scale.color);
+        }
+    }
+}
+
 function selectScale(scaleId) {
     currentScaleId = scaleId;
-    document.body.classList.toggle("view-growth", scaleId === "growth");
-    document.body.classList.toggle("view-stability", scaleId === "stability");
+    applyScaleTheme(scaleId);
     renderScalesList();
     if (currentTicker) runAnalysis(currentTicker);
 }
@@ -703,6 +820,7 @@ const scaleEditorEl = document.getElementById("scale-editor");
 const scaleEditorTitle = document.getElementById("scale-editor-title");
 const scaleEditorBack = document.getElementById("scale-editor-back");
 const scaleNameInput = document.getElementById("scale-name-input");
+const scaleColorInput = document.getElementById("scale-color-input");
 const scaleSectorTabsEl = document.getElementById("scale-sector-tabs");
 const copyBuiltinSelect = document.getElementById("copy-builtin-select");
 const copyBuiltinBtn = document.getElementById("copy-builtin-btn");
@@ -746,17 +864,20 @@ async function openScaleEditor(existingId) {
             const res = await fetch(`/api/scales/${existingId}`);
             const record = await res.json();
             scaleNameInput.value = record.name;
+            scaleColorInput.value = record.color || "#f5c518";
             editorSlots = {};
             Object.entries(record.profiles).forEach(([key, slot]) => {
                 editorSlots[key] = slot.metrics.map((m) => ({ ...m }));
             });
         } catch (err) {
             scaleNameInput.value = "";
+            scaleColorInput.value = "#f5c518";
         }
     } else {
         editorScaleId = null;
         scaleEditorTitle.textContent = "Skapa egen betygsskala";
         scaleNameInput.value = "";
+        scaleColorInput.value = "#f5c518";
         editorSlots = { default: [] };
     }
 
@@ -946,6 +1067,7 @@ document.addEventListener("click", (e) => {
 
 scaleSaveBtn.addEventListener("click", async () => {
     const name = scaleNameInput.value.trim();
+    const color = scaleColorInput.value;
     scaleEditorError.classList.add("hidden");
 
     const profiles = {};
@@ -963,7 +1085,7 @@ scaleSaveBtn.addEventListener("click", async () => {
         const res = await fetch(url, {
             method,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, profiles }),
+            body: JSON.stringify({ name, color, profiles }),
         });
         const data = await res.json();
         if (!res.ok) {

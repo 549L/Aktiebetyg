@@ -4,5 +4,6 @@ server.log
 cloudflared.log
 data/history.json
 data/custom_scales.json
+data/scale_ratings.json
 .venv/
 venv/

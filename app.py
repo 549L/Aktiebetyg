@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, render_template, request
 
+import ratings_store
 import scales_store
 from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
@@ -83,7 +84,7 @@ def scales():
 
     body = request.get_json(silent=True) or {}
     try:
-        record = scales_store.create_scale(body.get("name"), body.get("profiles") or {})
+        record = scales_store.create_scale(body.get("name"), body.get("profiles") or {}, color=body.get("color"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(record), 201
@@ -100,16 +101,34 @@ def scale_detail(scale_id):
     if request.method == "DELETE":
         if not scales_store.delete_scale(scale_id):
             return jsonify({"error": "Betygsskalan hittades inte."}), 404
+        ratings_store.delete_rating(scale_id)
         return jsonify({"deleted": True})
 
     body = request.get_json(silent=True) or {}
     try:
-        record = scales_store.update_scale(scale_id, body.get("name"), body.get("profiles") or {})
+        record = scales_store.update_scale(
+            scale_id, body.get("name"), body.get("profiles") or {}, color=body.get("color")
+        )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     if record is None:
         return jsonify({"error": "Betygsskalan hittades inte."}), 404
     return jsonify(record)
+
+
+@app.route("/api/ratings")
+def ratings():
+    return jsonify(ratings_store.get_all_ratings())
+
+
+@app.route("/api/scales/<scale_id>/rating", methods=["POST"])
+def rate_scale(scale_id):
+    body = request.get_json(silent=True) or {}
+    try:
+        summary = ratings_store.rate_scale(scale_id, body.get("stars"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(summary)
 
 
 @app.route("/api/chart/<ticker>")

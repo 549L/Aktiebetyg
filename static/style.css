@@ -231,18 +231,29 @@ button:disabled {
     margin: 0 0 12px;
 }
 
+#scales-search {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
 #scales-list {
     margin: 0 0 14px;
 }
 
 .scale-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    gap: 6px;
     padding: 10px 12px;
     border-radius: 8px;
-    border-bottom: none;
+    border: 1px solid transparent;
+    border-bottom: 1px solid transparent;
     cursor: pointer;
 }
 
@@ -260,6 +271,13 @@ button:disabled {
     font-weight: 600;
 }
 
+.scale-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
 .scale-row-name {
     flex: 1;
     font-size: 0.95rem;
@@ -269,6 +287,38 @@ button:disabled {
     display: flex;
     gap: 4px;
     flex-shrink: 0;
+}
+
+.star-rating {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.star {
+    padding: 0 1px;
+    background: transparent;
+    border: none;
+    color: var(--border);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.star:hover {
+    filter: none;
+    color: var(--yellow);
+    transform: scale(1.1);
+}
+
+.star.filled {
+    color: var(--yellow);
+}
+
+.star-rating-count {
+    margin-left: 6px;
+    font-size: 0.75rem;
+    color: var(--muted);
 }
 
 .scale-row-icon-btn {
@@ -318,6 +368,12 @@ button:disabled {
     font-size: 1.3rem;
 }
 
+.editor-name-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
 .editor-field {
     display: flex;
     flex-direction: column;
@@ -327,6 +383,10 @@ button:disabled {
     margin-bottom: 20px;
 }
 
+.editor-field:first-child {
+    flex: 1;
+}
+
 .editor-field input {
     padding: 10px 14px;
     border-radius: 8px;
@@ -334,6 +394,27 @@ button:disabled {
     background: var(--bg);
     color: var(--text);
     font-size: 1rem;
+}
+
+.editor-color-field {
+    flex-shrink: 0;
+}
+
+.editor-color-field input[type="color"] {
+    padding: 3px;
+    width: 60px;
+    height: 42px;
+    cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .editor-name-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    .editor-color-field input[type="color"] {
+        width: 100%;
+    }
 }
 
 .scale-sector-tabs {
