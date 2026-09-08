@@ -4,27 +4,10 @@ const suggestionsEl = document.getElementById("suggestions");
 const statusEl = document.getElementById("status");
 const result = document.getElementById("result");
 
-let currentViewStyle = null;
-
 const VIEW_STYLE_LABELS = {
     growth: "Tillväxtvy",
     stability: "Stabil vy",
 };
-
-document.querySelectorAll(".view-style-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-        const style = btn.dataset.style;
-        currentViewStyle = currentViewStyle === style ? null : style;
-        document.querySelectorAll(".view-style-btn").forEach((b) => {
-            b.setAttribute("aria-pressed", b.dataset.style === currentViewStyle ? "true" : "false");
-        });
-        document.body.classList.toggle("view-growth", currentViewStyle === "growth");
-        document.body.classList.toggle("view-stability", currentViewStyle === "stability");
-        if (currentTicker) {
-            runAnalysis(currentTicker);
-        }
-    });
-});
 
 const RATING_LABELS = {
     "extreme fear": "Extrem rädsla",
@@ -264,9 +247,7 @@ async function runAnalysis(ticker) {
 
     try {
         const url = new URL(`/api/analyze/${encodeURIComponent(ticker)}`, window.location.origin);
-        if (currentViewStyle) {
-            url.searchParams.set("style", currentViewStyle);
-        }
+        url.searchParams.set("scale", currentScaleId);
         const res = await fetch(url);
         const data = await res.json();
 
@@ -604,3 +585,397 @@ function drawChart(data, period) {
         renderMACD();
     }
 }
+
+// ---------------------------------------------------------------------------
+// Betygsskalor: de tre inbyggda (549L-skalorna, motsvarar det som förut var
+// tillväxt/stabil/vanlig-knapparna) + användarens egna, sparade skalor.
+// currentScaleId styr vilken skala som används vid nästa analys och skickas
+// som ?scale= till /api/analyze - "growth"/"stability" viktar om appens
+// vanliga profiler precis som innan, "default" är oförändrat normalläge,
+// "custom:<id>" är en egen skala.
+// ---------------------------------------------------------------------------
+
+const BUILTIN_SCALES = [
+    { id: "growth", name: "549L Tillväxt Bolag" },
+    { id: "stability", name: "549L Stabila Bolag" },
+    { id: "default", name: "549L Vanliga bolag" },
+];
+
+let currentScaleId = "default";
+let customScales = [];
+
+const scalesListEl = document.getElementById("scales-list");
+const createScaleBtn = document.getElementById("create-scale-btn");
+
+async function loadScales() {
+    try {
+        const res = await fetch("/api/scales");
+        customScales = await res.json();
+    } catch (err) {
+        customScales = [];
+    }
+    renderScalesList();
+}
+
+function renderScalesList() {
+    scalesListEl.innerHTML = "";
+    BUILTIN_SCALES.forEach((scale) => {
+        scalesListEl.appendChild(buildScaleRow(scale.id, scale.name, false));
+    });
+    customScales.forEach((scale) => {
+        scalesListEl.appendChild(buildScaleRow(`custom:${scale.id}`, scale.name, true));
+    });
+}
+
+function buildScaleRow(scaleId, name, isCustom) {
+    const li = document.createElement("li");
+    li.className = "scale-row" + (scaleId === currentScaleId ? " active" : "");
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "scale-row-name";
+    nameSpan.textContent = name;
+    nameSpan.addEventListener("click", () => selectScale(scaleId));
+    li.appendChild(nameSpan);
+
+    if (isCustom) {
+        const rawId = scaleId.slice("custom:".length);
+        const actions = document.createElement("span");
+        actions.className = "scale-row-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "scale-row-icon-btn";
+        editBtn.textContent = "✎";
+        editBtn.setAttribute("aria-label", `Redigera ${name}`);
+        editBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openScaleEditor(rawId);
+        });
+        actions.appendChild(editBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "scale-row-icon-btn";
+        deleteBtn.textContent = "✕";
+        deleteBtn.setAttribute("aria-label", `Ta bort ${name}`);
+        deleteBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Ta bort betygsskalan "${name}"?`)) return;
+            await fetch(`/api/scales/${rawId}`, { method: "DELETE" });
+            if (currentScaleId === scaleId) selectScale("default");
+            loadScales();
+        });
+        actions.appendChild(deleteBtn);
+
+        li.appendChild(actions);
+    }
+
+    return li;
+}
+
+function selectScale(scaleId) {
+    currentScaleId = scaleId;
+    document.body.classList.toggle("view-growth", scaleId === "growth");
+    document.body.classList.toggle("view-stability", scaleId === "stability");
+    renderScalesList();
+    if (currentTicker) runAnalysis(currentTicker);
+}
+
+loadScales();
+
+// ---------------------------------------------------------------------------
+// Skalredigeraren - skapa/redigera en egen betygsskala. Öppnas som en egen
+// fullbred sektion (#scale-editor) som ersätter huvudinnehållet (#main-view)
+// tills man går tillbaka, istället för en trång modal - det behövs plats
+// för branschflikar + en hel nyckeltalslista.
+// ---------------------------------------------------------------------------
+
+let metricCatalog = [];
+let metricCatalogByKey = {};
+let builtinProfileRows = {};
+
+let editorScaleId = null; // null = skapar ny skala, annars id på skalan som redigeras
+let editorSlots = {};     // { "default": [rader...], "sector:X": [rader...] }
+let editorActiveSlot = "default";
+
+const mainViewEl = document.getElementById("main-view");
+const scaleEditorEl = document.getElementById("scale-editor");
+const scaleEditorTitle = document.getElementById("scale-editor-title");
+const scaleEditorBack = document.getElementById("scale-editor-back");
+const scaleNameInput = document.getElementById("scale-name-input");
+const scaleSectorTabsEl = document.getElementById("scale-sector-tabs");
+const copyBuiltinSelect = document.getElementById("copy-builtin-select");
+const copyBuiltinBtn = document.getElementById("copy-builtin-btn");
+const weightIndicatorEl = document.getElementById("scale-weight-indicator");
+const metricRowsEl = document.getElementById("scale-metric-rows");
+const addMetricBtn = document.getElementById("add-metric-btn");
+const metricPickerEl = document.getElementById("metric-picker");
+const metricPickerSearch = document.getElementById("metric-picker-search");
+const metricPickerList = document.getElementById("metric-picker-list");
+const scaleSaveBtn = document.getElementById("scale-save-btn");
+const scaleEditorError = document.getElementById("scale-editor-error");
+
+const SECTOR_TAB_LABELS = { "default": "Standard (alla branscher)" };
+
+async function loadEditorData() {
+    if (metricCatalog.length > 0) return; // ladda katalogen/profilerna bara en gång
+    try {
+        const [catalogRes, profilesRes] = await Promise.all([
+            fetch("/api/metric-catalog"),
+            fetch("/api/builtin-profiles"),
+        ]);
+        metricCatalog = await catalogRes.json();
+        metricCatalogByKey = Object.fromEntries(metricCatalog.map((m) => [m.key, m]));
+        builtinProfileRows = await profilesRes.json();
+    } catch (err) {
+        metricCatalog = [];
+        metricCatalogByKey = {};
+        builtinProfileRows = {};
+    }
+}
+
+async function openScaleEditor(existingId) {
+    await loadEditorData();
+    scaleEditorError.classList.add("hidden");
+
+    if (existingId) {
+        editorScaleId = existingId;
+        scaleEditorTitle.textContent = "Redigera betygsskala";
+        editorSlots = { default: [] };
+        try {
+            const res = await fetch(`/api/scales/${existingId}`);
+            const record = await res.json();
+            scaleNameInput.value = record.name;
+            editorSlots = {};
+            Object.entries(record.profiles).forEach(([key, slot]) => {
+                editorSlots[key] = slot.metrics.map((m) => ({ ...m }));
+            });
+        } catch (err) {
+            scaleNameInput.value = "";
+        }
+    } else {
+        editorScaleId = null;
+        scaleEditorTitle.textContent = "Skapa egen betygsskala";
+        scaleNameInput.value = "";
+        editorSlots = { default: [] };
+    }
+
+    editorActiveSlot = "default";
+    renderSectorTabs();
+    renderCopyBuiltinOptions();
+    renderMetricRows();
+    metricPickerEl.classList.add("hidden");
+
+    mainViewEl.classList.add("hidden");
+    scaleEditorEl.classList.remove("hidden");
+    window.scrollTo(0, 0);
+}
+
+function closeScaleEditor() {
+    scaleEditorEl.classList.add("hidden");
+    mainViewEl.classList.remove("hidden");
+}
+
+createScaleBtn.addEventListener("click", () => openScaleEditor(null));
+scaleEditorBack.addEventListener("click", closeScaleEditor);
+
+function currentSlotRows() {
+    if (!editorSlots[editorActiveSlot]) editorSlots[editorActiveSlot] = [];
+    return editorSlots[editorActiveSlot];
+}
+
+function renderSectorTabs() {
+    scaleSectorTabsEl.innerHTML = "";
+    Object.keys(builtinProfileRows).forEach((key) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "scale-sector-tab" + (key === editorActiveSlot ? " active" : "");
+        const hasOverride = key !== "default" && editorSlots[key] && editorSlots[key].length > 0;
+        const label = SECTOR_TAB_LABELS[key] || builtinProfileRows[key].label;
+        btn.textContent = hasOverride ? `${label} ●` : label;
+        btn.addEventListener("click", () => {
+            editorActiveSlot = key;
+            renderSectorTabs();
+            renderCopyBuiltinOptions();
+            renderMetricRows();
+        });
+        scaleSectorTabsEl.appendChild(btn);
+    });
+}
+
+function renderCopyBuiltinOptions() {
+    copyBuiltinSelect.innerHTML = "";
+    Object.entries(builtinProfileRows).forEach(([key, profile]) => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = profile.label;
+        copyBuiltinSelect.appendChild(opt);
+    });
+    copyBuiltinSelect.value = editorActiveSlot in builtinProfileRows ? editorActiveSlot : "default";
+}
+
+copyBuiltinBtn.addEventListener("click", () => {
+    const source = builtinProfileRows[copyBuiltinSelect.value];
+    if (!source) return;
+    editorSlots[editorActiveSlot] = source.metrics.map((m) => ({ ...m }));
+    renderSectorTabs();
+    renderMetricRows();
+});
+
+function formatRowValue(value, unit) {
+    const shown = unit === "%" ? value * 100 : value;
+    return Math.round(shown * 100) / 100;
+}
+
+function renderMetricRows() {
+    const rows = currentSlotRows();
+    metricRowsEl.innerHTML = "";
+
+    if (rows.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted scale-metric-empty";
+        li.textContent = editorActiveSlot === "default"
+            ? "Inga nyckeltal ännu - lägg till minst ett med knappen nedan."
+            : "Inget branschöverlägg - den här branschen använder skalans standarduppsättning tills du lägger till nyckeltal här.";
+        metricRowsEl.appendChild(li);
+        updateWeightIndicator();
+        return;
+    }
+
+    rows.forEach((row, index) => {
+        const catalogEntry = metricCatalogByKey[row.key];
+        if (!catalogEntry) return;
+        const unit = catalogEntry.unit;
+        const unitSuffix = unit === "%" ? " (%)" : unit === "x" ? " (x)" : "";
+
+        const li = document.createElement("li");
+        li.className = "scale-metric-row";
+        li.innerHTML = `
+            <span class="scale-metric-label">${catalogEntry.label}</span>
+            <label class="scale-metric-input">Vikt (%)
+                <input type="number" min="0" max="100" step="1" class="row-weight" value="${formatRowValue(row.weight_pct, "")}">
+            </label>
+            <label class="scale-metric-input">Ideal${unitSuffix}
+                <input type="number" step="any" class="row-ideal" value="${formatRowValue(row.ideal, unit)}">
+            </label>
+            <label class="scale-metric-input">Tolerans${unitSuffix}
+                <input type="number" step="any" min="0" class="row-tolerance" value="${formatRowValue(row.tolerance, unit)}">
+            </label>
+            <button type="button" class="scale-metric-remove" aria-label="Ta bort ${catalogEntry.label}">✕</button>
+        `;
+
+        li.querySelector(".row-weight").addEventListener("input", (e) => {
+            row.weight_pct = parseFloat(e.target.value) || 0;
+            updateWeightIndicator();
+        });
+        li.querySelector(".row-ideal").addEventListener("input", (e) => {
+            const raw = parseFloat(e.target.value) || 0;
+            row.ideal = unit === "%" ? raw / 100 : raw;
+        });
+        li.querySelector(".row-tolerance").addEventListener("input", (e) => {
+            const raw = parseFloat(e.target.value) || 0;
+            row.tolerance = unit === "%" ? raw / 100 : raw;
+        });
+        li.querySelector(".scale-metric-remove").addEventListener("click", () => {
+            rows.splice(index, 1);
+            renderSectorTabs();
+            renderMetricRows();
+        });
+
+        metricRowsEl.appendChild(li);
+    });
+
+    updateWeightIndicator();
+}
+
+function updateWeightIndicator() {
+    const total = currentSlotRows().reduce((sum, r) => sum + (r.weight_pct || 0), 0);
+    weightIndicatorEl.textContent = `Vikt: ${Math.round(total)}% av 100%`;
+    weightIndicatorEl.classList.remove("weight-ok", "weight-off");
+    weightIndicatorEl.classList.add(Math.abs(total - 100) <= 2 ? "weight-ok" : "weight-off");
+}
+
+addMetricBtn.addEventListener("click", () => {
+    metricPickerSearch.value = "";
+    renderMetricPicker("");
+    metricPickerEl.classList.remove("hidden");
+    metricPickerSearch.focus();
+});
+
+metricPickerSearch.addEventListener("input", () => renderMetricPicker(metricPickerSearch.value));
+
+function renderMetricPicker(query) {
+    const usedKeys = new Set(currentSlotRows().map((r) => r.key));
+    const q = query.trim().toLowerCase();
+
+    metricPickerList.innerHTML = "";
+    metricCatalog
+        .filter((m) => !usedKeys.has(m.key))
+        .filter((m) => !q || m.label.toLowerCase().includes(q))
+        .forEach((m) => {
+            const li = document.createElement("li");
+            li.textContent = m.label;
+            li.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                currentSlotRows().push({
+                    key: m.key,
+                    weight_pct: Math.round(m.default_weight * 100),
+                    ideal: m.default_ideal,
+                    tolerance: m.default_tolerance,
+                });
+                metricPickerEl.classList.add("hidden");
+                renderSectorTabs();
+                renderMetricRows();
+            });
+            metricPickerList.appendChild(li);
+        });
+
+    if (metricPickerList.children.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "Inga fler nyckeltal att lägga till.";
+        metricPickerList.appendChild(li);
+    }
+}
+
+document.addEventListener("click", (e) => {
+    if (!metricPickerEl.classList.contains("hidden") && !metricPickerEl.contains(e.target) && e.target !== addMetricBtn) {
+        metricPickerEl.classList.add("hidden");
+    }
+});
+
+scaleSaveBtn.addEventListener("click", async () => {
+    const name = scaleNameInput.value.trim();
+    scaleEditorError.classList.add("hidden");
+
+    const profiles = {};
+    Object.entries(editorSlots).forEach(([key, rows]) => {
+        if (rows.length === 0) return;
+        profiles[key] = {
+            metrics: rows.map((r) => ({ key: r.key, weight_pct: r.weight_pct, ideal: r.ideal, tolerance: r.tolerance })),
+        };
+    });
+
+    const url = editorScaleId ? `/api/scales/${editorScaleId}` : "/api/scales";
+    const method = editorScaleId ? "PUT" : "POST";
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, profiles }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            scaleEditorError.textContent = data.error || "Kunde inte spara betygsskalan.";
+            scaleEditorError.classList.remove("hidden");
+            return;
+        }
+        closeScaleEditor();
+        await loadScales();
+        selectScale(`custom:${data.id}`);
+    } catch (err) {
+        scaleEditorError.textContent = "Nätverksfel: kunde inte nå servern.";
+        scaleEditorError.classList.remove("hidden");
+    }
+});

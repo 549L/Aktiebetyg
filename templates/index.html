@@ -26,13 +26,10 @@
             </svg>
             Aktiebetyg
         </h1>
+        <div id="main-view">
         <p class="subtitle">Skriv in ett bolagsnamn eller en ticker (t.ex. Volvo, Ericsson, AAPL) och få ett betyg 1-100 baserat på nyckeltal.</p>
 
         <form id="search-form">
-            <div class="view-style-toggle" id="view-style-toggle" role="group" aria-label="Betygsvy">
-                <button type="button" data-style="growth" class="view-style-btn" aria-pressed="false">Tillväxtbolag</button>
-                <button type="button" data-style="stability" class="view-style-btn" aria-pressed="false">Stabila bolag</button>
-            </div>
             <div class="input-wrapper">
                 <input type="text" id="ticker-input" placeholder="Bolagsnamn eller ticker, t.ex. Volvo" autocomplete="off">
                 <ul id="suggestions" class="suggestions hidden"></ul>
@@ -58,6 +55,12 @@
                 <p id="industries-empty" class="muted hidden">Inga analyserade aktier än.</p>
             </section>
         </div>
+
+        <section id="scales-panel">
+            <h3>Mina betygsskalor</h3>
+            <ul id="scales-list"></ul>
+            <button type="button" id="create-scale-btn">+ Skapa egen betygsskala</button>
+        </section>
 
         <div id="status"></div>
 
@@ -117,6 +120,38 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+            </div>
+        </section>
+        </div>
+
+        <section id="scale-editor" class="hidden">
+            <button type="button" id="scale-editor-back" class="editor-back-btn">← Tillbaka</button>
+            <h2 id="scale-editor-title">Skapa egen betygsskala</h2>
+
+            <label class="editor-field">
+                Namn på skalan
+                <input type="text" id="scale-name-input" placeholder="T.ex. Min utdelningsskala">
+            </label>
+
+            <div id="scale-sector-tabs" class="scale-sector-tabs" role="tablist"></div>
+
+            <div class="scale-slot-actions">
+                <select id="copy-builtin-select"></select>
+                <button type="button" id="copy-builtin-btn">Kopiera nyckeltal</button>
+                <span id="scale-weight-indicator" class="weight-indicator"></span>
+            </div>
+
+            <ul id="scale-metric-rows" class="scale-metric-rows"></ul>
+            <button type="button" id="add-metric-btn" class="add-metric-btn">+ Lägg till nyckeltal</button>
+
+            <div id="metric-picker" class="metric-picker hidden">
+                <input type="text" id="metric-picker-search" placeholder="Sök nyckeltal...">
+                <ul id="metric-picker-list"></ul>
+            </div>
+
+            <div class="scale-editor-footer">
+                <span id="scale-editor-error" class="editor-error hidden"></span>
+                <button type="button" id="scale-save-btn">Spara betygsskala</button>
             </div>
         </section>
     </main>

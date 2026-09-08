@@ -30,9 +30,22 @@ _STYLE_MULTIPLIERS = {
 }
 
 
+def _renormalize_weights(scoring_results):
+    """Skalar om delbetygens vikter så att de summerar till 1.0 - annars
+    visar tabellen bara den råa lagrade vikten, som inte stämmer med hur
+    stor andel av totalbetyget nyckeltalet faktiskt utgör (t.ex. om ett
+    nyckeltal saknar data och faller bort, eller i en egen skala med bara
+    ett fåtal nyckeltal ihopräknat under 100%)."""
+    total = sum(r["weight"] for r in scoring_results)
+    if total > 0:
+        for r in scoring_results:
+            r["weight"] = r["weight"] / total
+    return scoring_results
+
+
 def _apply_view_style(scoring_results, view_style):
-    """Viktar om (och normaliserar tillbaka till summa 1.0) delbetygens
-    vikter utifrån vald vy. Ändrar inget om view_style saknas/är okänd."""
+    """Viktar om delbetygens vikter utifrån vald vy (och normaliserar
+    tillbaka till summa 1.0). Ändrar inget om view_style saknas/är okänd."""
     multipliers = _STYLE_MULTIPLIERS.get(view_style)
     if not multipliers or not scoring_results:
         return scoring_results
@@ -41,23 +54,23 @@ def _apply_view_style(scoring_results, view_style):
         style = METRIC_STYLE.get(r["key"], "neutral")
         r["weight"] = r["weight"] * multipliers[style]
 
-    total = sum(r["weight"] for r in scoring_results)
-    if total > 0:
-        for r in scoring_results:
-            r["weight"] = r["weight"] / total
-
-    return scoring_results
+    return _renormalize_weights(scoring_results)
 
 
-def _select_profile(sector: str, industry: str) -> dict:
+def _select_profile(sector: str, industry: str, profiles: dict = PROFILES) -> dict:
     """Väljer betygsskala utifrån bolagets bransch: exakt bransch (industry)
     slår sektor (sector), som i sin tur slår standardskalan. Se
-    config/metrics.py för hur profilerna är uppbyggda."""
-    if industry and f"industry:{industry}" in PROFILES:
-        return PROFILES[f"industry:{industry}"]
-    if sector and f"sector:{sector}" in PROFILES:
-        return PROFILES[f"sector:{sector}"]
-    return PROFILES["default"]
+    config/metrics.py för hur profilerna är uppbyggda.
+
+    `profiles` är PROFILES som standard (appens inbyggda skalor), men kan
+    bytas ut mot en hydrerad egen betygsskala från scales_store.py - samma
+    "default"/"sector:X"-nyckelkonvention, så funktionen fungerar oförändrad
+    för båda."""
+    if industry and f"industry:{industry}" in profiles:
+        return profiles[f"industry:{industry}"]
+    if sector and f"sector:{sector}" in profiles:
+        return profiles[f"sector:{sector}"]
+    return profiles["default"]
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-ZÅÄÖ])")
 
@@ -249,7 +262,7 @@ def _computed_fields(info, fear_greed, ma200):
     return computed
 
 
-def analyze_ticker(ticker: str, view_style: str = None):
+def analyze_ticker(ticker: str, view_style: str = None, custom_scale_profiles: dict = None):
     ticker = ticker.strip().upper()
     resolved_ticker = ticker
     info = get_info(ticker)
@@ -283,7 +296,7 @@ def analyze_ticker(ticker: str, view_style: str = None):
 
     raw_sector = info.get("sector") or ""
     raw_industry = info.get("industry") or ""
-    profile = _select_profile(raw_sector, raw_industry)
+    profile = _select_profile(raw_sector, raw_industry, profiles=custom_scale_profiles or PROFILES)
 
     scoring_results = []
     for metric in profile["scoring"]:
@@ -291,7 +304,18 @@ def analyze_ticker(ticker: str, view_style: str = None):
         if result is not None:
             scoring_results.append(result)
 
-    scoring_results = _apply_view_style(scoring_results, view_style)
+    # Egna skalors vikter är redan användarens eget val - tillväxt/stabil-vy
+    # (som viktar om INBYGGDA profiler) och en egen skala används aldrig
+    # samtidigt i det nya gränssnittet.
+    if custom_scale_profiles is None:
+        scoring_results = _apply_view_style(scoring_results, view_style)
+    else:
+        # Egna skalor har fritt valda vikter som sällan summerar till exakt
+        # 100% (och kan tappa ytterligare vikt om ett valt nyckeltal saknar
+        # data för bolaget) - normalisera om så "Vikt"-kolumnen i tabellen
+        # visar hur stor andel av det FAKTISKA totalbetyget varje nyckeltal
+        # utgör, inte bara den vikt som skrevs in vid skapandet.
+        scoring_results = _renormalize_weights(scoring_results)
 
     total_weight = sum(r["weight"] for r in scoring_results)
     if total_weight > 0:
@@ -300,7 +324,7 @@ def analyze_ticker(ticker: str, view_style: str = None):
         overall_score = None
 
     insight_results = []
-    for metric in profile["insight"]:
+    for metric in profile.get("insight", []):
         result = _evaluate_insight_metric(metric, info, computed)
         if result is not None:
             insight_results.append(result)

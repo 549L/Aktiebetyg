@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, render_template, request
 
+import scales_store
 from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
 from history_store import record_result, recent_n, distinct_industries
+from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
 
 app = Flask(__name__)
 
@@ -34,11 +36,21 @@ def industries():
 
 @app.route("/api/analyze/<ticker>")
 def analyze(ticker):
-    view_style = request.args.get("style")
-    if view_style not in ("growth", "stability"):
-        view_style = None
+    # ?scale= ersätter gamla ?style= - "growth"/"stability" är de inbyggda
+    # tillväxt-/stabil-vyerna (viktar om profilen), "custom:<id>" en egen
+    # sparad betygsskala (byter ut profilen helt). Allt annat/utelämnat =
+    # appens vanliga skala, oförändrat.
+    scale_param = request.args.get("scale")
+    view_style = scale_param if scale_param in ("growth", "stability") else None
+
+    custom_scale_profiles = None
+    if scale_param and scale_param.startswith("custom:"):
+        custom_scale_profiles = scales_store.resolve_profiles(scale_param.split(":", 1)[1])
+        if custom_scale_profiles is None:
+            return jsonify({"error": "Betygsskalan kunde inte hittas - den kan ha tagits bort."}), 404
+
     try:
-        result = analyze_ticker(ticker, view_style=view_style)
+        result = analyze_ticker(ticker, view_style=view_style, custom_scale_profiles=custom_scale_profiles)
     except Exception as exc:
         return jsonify({"error": f"Något gick fel: {exc}"}), 500
 
@@ -52,6 +64,52 @@ def analyze(ticker):
 @app.route("/api/recent")
 def recent():
     return jsonify(recent_n(10))
+
+
+@app.route("/api/metric-catalog")
+def metric_catalog():
+    return jsonify(list(METRIC_CATALOG.values()))
+
+
+@app.route("/api/builtin-profiles")
+def builtin_profiles():
+    return jsonify(BUILTIN_PROFILE_ROWS)
+
+
+@app.route("/api/scales", methods=["GET", "POST"])
+def scales():
+    if request.method == "GET":
+        return jsonify(scales_store.list_scales())
+
+    body = request.get_json(silent=True) or {}
+    try:
+        record = scales_store.create_scale(body.get("name"), body.get("profiles") or {})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(record), 201
+
+
+@app.route("/api/scales/<scale_id>", methods=["GET", "PUT", "DELETE"])
+def scale_detail(scale_id):
+    if request.method == "GET":
+        record = scales_store.get_scale(scale_id)
+        if record is None:
+            return jsonify({"error": "Betygsskalan hittades inte."}), 404
+        return jsonify(record)
+
+    if request.method == "DELETE":
+        if not scales_store.delete_scale(scale_id):
+            return jsonify({"error": "Betygsskalan hittades inte."}), 404
+        return jsonify({"deleted": True})
+
+    body = request.get_json(silent=True) or {}
+    try:
+        record = scales_store.update_scale(scale_id, body.get("name"), body.get("profiles") or {})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if record is None:
+        return jsonify({"error": "Betygsskalan hittades inte."}), 404
+    return jsonify(record)
 
 
 @app.route("/api/chart/<ticker>")

@@ -3,5 +3,6 @@ __pycache__/
 server.log
 cloudflared.log
 data/history.json
+data/custom_scales.json
 .venv/
 venv/
