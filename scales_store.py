@@ -1,7 +1,10 @@
 """
-Lagring av användarskapade betygsskalor ("Egna betygsskalor"), sparade
-lokalt som en JSON-fil (data/custom_scales.json) - samma mönster som
-history_store.py använder för sökhistoriken.
+Lagring av användarskapade betygsskalor ("Egna betygsskalor").
+
+Sparas i Upstash Redis när UPSTASH_REDIS_REST_URL/-TOKEN är satta (så att
+skalorna alltid finns kvar, oavsett hur många gånger Render-tjänsten
+somnar/startar om), annars i en lokal JSON-fil (data/custom_scales.json)
+- se remote_store.py.
 
 En sparad skala har alltid ett "default"-nyckeltalsset som gäller alla
 branscher, plus valfria bransch-överlägg (nyckel "sector:<Yahoo-sektor>",
@@ -19,10 +22,12 @@ import re
 import time
 import uuid
 
+import remote_store
 from config.industries import SECTOR_TRANSLATIONS
 from config.metric_catalog import METRIC_CATALOG
 
 _SCALES_PATH = os.path.join(os.path.dirname(__file__), "data", "custom_scales.json")
+_REDIS_KEY = "aktiebetyg:custom_scales"
 
 _VALID_PROFILE_KEYS = {"default"} | {f"sector:{s}" for s in SECTOR_TRANSLATIONS}
 
@@ -40,6 +45,8 @@ def _clean_color(color):
 
 
 def _load():
+    if remote_store.enabled():
+        return remote_store.get_json(_REDIS_KEY, {})
     if not os.path.exists(_SCALES_PATH):
         return {}
     try:
@@ -50,6 +57,9 @@ def _load():
 
 
 def _save(scales):
+    if remote_store.enabled():
+        remote_store.set_json(_REDIS_KEY, scales)
+        return
     os.makedirs(os.path.dirname(_SCALES_PATH), exist_ok=True)
     with open(_SCALES_PATH, "w", encoding="utf-8") as f:
         json.dump(scales, f, ensure_ascii=False, indent=2)

@@ -1,7 +1,10 @@
 """
-Enkel lokal historik över alla aktier som analyserats i appen, sparad som
-en JSON-fil (data/history.json). Används för listan ("Senast sökta") som
-visas under sökfältet.
+Historik över alla aktier som analyserats i appen. Används för listan
+("Senast sökta") som visas under sökfältet.
+
+Sparas i Upstash Redis när UPSTASH_REDIS_REST_URL/-TOKEN är satta (så att
+historiken överlever att Render-tjänsten somnar/startar om), annars i en
+lokal JSON-fil (data/history.json) - se remote_store.py.
 
 Varje gång en aktie analyseras sparas/uppdateras dess senaste betyg här,
 tillsammans med en tidsstämpel för när den senast söktes.
@@ -11,12 +14,16 @@ import json
 import os
 import time
 
+import remote_store
 from config.industries import SECTOR_TRANSLATIONS
 
 _HISTORY_PATH = os.path.join(os.path.dirname(__file__), "data", "history.json")
+_REDIS_KEY = "aktiebetyg:history"
 
 
 def _load():
+    if remote_store.enabled():
+        return remote_store.get_json(_REDIS_KEY, {})
     if not os.path.exists(_HISTORY_PATH):
         return {}
     try:
@@ -27,6 +34,9 @@ def _load():
 
 
 def _save(history):
+    if remote_store.enabled():
+        remote_store.set_json(_REDIS_KEY, history)
+        return
     os.makedirs(os.path.dirname(_HISTORY_PATH), exist_ok=True)
     with open(_HISTORY_PATH, "w", encoding="utf-8") as f:
         json.dump(history, f, ensure_ascii=False, indent=2)

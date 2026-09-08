@@ -3,18 +3,26 @@ Delat stjärnbetyg (1-5) på betygsskalor - både de tre inbyggda (549L-
 skalorna, nycklade på "growth"/"stability"/"default") och egna sparade
 skalor (nycklade på deras uuid, samma id som scales_store.py använder).
 
+Sparas i Upstash Redis när UPSTASH_REDIS_REST_URL/-TOKEN är satta (så att
+betygen inte försvinner när Render-tjänsten somnar/startar om), annars i
+en lokal JSON-fil (data/scale_ratings.json) - se remote_store.py.
+
 Lagras som summa + antal per skala (inte varje enskilt betyg för sig) -
-genomsnittet räknas ut vid läsning. Samma JSON-fil-mönster som
-history_store.py/scales_store.py.
+genomsnittet räknas ut vid läsning.
 """
 
 import json
 import os
 
+import remote_store
+
 _RATINGS_PATH = os.path.join(os.path.dirname(__file__), "data", "scale_ratings.json")
+_REDIS_KEY = "aktiebetyg:scale_ratings"
 
 
 def _load():
+    if remote_store.enabled():
+        return remote_store.get_json(_REDIS_KEY, {})
     if not os.path.exists(_RATINGS_PATH):
         return {}
     try:
@@ -25,6 +33,9 @@ def _load():
 
 
 def _save(ratings):
+    if remote_store.enabled():
+        remote_store.set_json(_REDIS_KEY, ratings)
+        return
     os.makedirs(os.path.dirname(_RATINGS_PATH), exist_ok=True)
     with open(_RATINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(ratings, f, ensure_ascii=False, indent=2)
