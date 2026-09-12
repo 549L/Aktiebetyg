@@ -1047,7 +1047,12 @@ input[type="range"].weight-slider::-moz-range-thumb {
 }
 
 .hidden {
-    display: none;
+    /* !important behövs - annars förlorar denna klass mot mer specifika
+       ID-selektorer som #account-bar/#macd-svg/#user-profile-avatar-controls
+       (som sätter sitt eget display:flex/block), och elementet syns kvar
+       trots att .hidden är satt. En generell "dölj det här"-klass måste
+       kunna slå igenom oavsett hur specifik komponentens egen stil är. */
+    display: none !important;
 }
 
 #result {
