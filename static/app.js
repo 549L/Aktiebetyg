@@ -1069,6 +1069,7 @@ function renderMetricRows() {
         weightSlider.addEventListener("input", (e) => {
             row.weight_pct = parseFloat(e.target.value) || 0;
             weightValueEl.textContent = `${row.weight_pct}%`;
+            updateWeightSliderCaps();
             updateWeightIndicator();
         });
         li.querySelector(".row-ideal").addEventListener("input", (e) => {
@@ -1090,7 +1091,43 @@ function renderMetricRows() {
         metricRowsEl.appendChild(li);
     });
 
+    updateWeightSliderCaps();
     updateWeightIndicator();
+}
+
+// Håller varje viktslider inom det utrymme som faktiskt finns kvar (100%
+// minus vad de ANDRA nyckeltalen i samma bransch/standard-uppsättning redan
+// väger) - man kan alltså inte dra upp en vikt så att summan går över 100%,
+// utan måste sänka en annan vikt först för att få utrymme.
+function updateWeightSliderCaps() {
+    const rows = currentSlotRows();
+
+    // Städa eventuellt överskott (t.ex. efter "kopiera nyckeltal" eller en
+    // inläst skala vars vikter råkar summera till över 100%) genom att gå
+    // igenom raderna i ordning och dra ner EN i taget mot en löpande total -
+    // annars skulle varje överskriden rad klippas mot samma (för höga)
+    // starttotal och tillsammans sänka summan långt under 100%.
+    let total = rows.reduce((sum, r) => sum + (r.weight_pct || 0), 0);
+    rows.forEach((row) => {
+        const othersSum = total - row.weight_pct;
+        const max = Math.max(1, Math.floor(100 - othersSum));
+        if (row.weight_pct > max) {
+            total -= row.weight_pct - max;
+            row.weight_pct = max;
+        }
+    });
+
+    metricRowsEl.querySelectorAll(".row-weight").forEach((slider, i) => {
+        const row = rows[i];
+        if (!row) return;
+        const othersSum = total - row.weight_pct;
+        slider.max = Math.max(1, Math.floor(100 - othersSum));
+        if (parseFloat(slider.value) !== row.weight_pct) {
+            slider.value = row.weight_pct;
+            const valueEl = slider.closest(".weight-slider-wrap").querySelector(".weight-slider-value");
+            if (valueEl) valueEl.textContent = `${row.weight_pct}%`;
+        }
+    });
 }
 
 function updateWeightIndicator() {
@@ -1122,9 +1159,14 @@ function renderMetricPicker(query) {
             li.textContent = m.label;
             li.addEventListener("mousedown", (e) => {
                 e.preventDefault();
-                currentSlotRows().push({
+                const rows = currentSlotRows();
+                // Ett nytt nyckeltal ska bara ta det utrymme som faktiskt
+                // finns kvar - inte tvinga ner de vikter du redan satt.
+                const usedWeight = rows.reduce((sum, r) => sum + (r.weight_pct || 0), 0);
+                const headroom = Math.max(1, Math.floor(100 - usedWeight));
+                rows.push({
                     key: m.key,
-                    weight_pct: Math.round(m.default_weight * 100),
+                    weight_pct: Math.min(Math.round(m.default_weight * 100), headroom),
                     ideal: m.default_ideal,
                     tolerance: m.default_tolerance,
                 });
