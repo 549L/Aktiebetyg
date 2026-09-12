@@ -248,6 +248,10 @@ def user_profile(username):
     scale_ratings = ratings_store.get_all_ratings()
     for scale in scales:
         scale["rating"] = scale_ratings.get(scale["id"], {"average": None, "count": 0})
+
+    # Högst betygsatta skalan överst, obetygsatta sist - samma sortering
+    # som användarsökningen redan använder.
+    scales.sort(key=lambda s: (s["rating"]["average"] is None, -(s["rating"]["average"] or 0)))
     account["scales"] = scales
 
     return jsonify(account)
