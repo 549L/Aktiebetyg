@@ -100,6 +100,7 @@ def list_scales():
             "id": s["id"],
             "name": s["name"],
             "color": s.get("color", _DEFAULT_COLOR),
+            "created_by": s.get("created_by"),
             "created_at": s["created_at"],
             "updated_at": s["updated_at"],
         }
@@ -109,11 +110,19 @@ def list_scales():
     return rows
 
 
+def list_scales_by_owner(username):
+    """Alla skalor skapade av `username`, nyast först - underlag för
+    användarprofilsidan."""
+    rows = [r for r in list_scales() if r.get("created_by") == username]
+    rows.sort(key=lambda r: r["created_at"], reverse=True)
+    return rows
+
+
 def get_scale(scale_id):
     return _load().get(scale_id)
 
 
-def create_scale(name, profiles, color=None):
+def create_scale(name, profiles, color=None, created_by=None):
     name = (name or "").strip()
     if not name:
         raise ValueError("Skalan måste ha ett namn.")
@@ -126,6 +135,7 @@ def create_scale(name, profiles, color=None):
         "id": scale_id,
         "name": name,
         "color": _clean_color(color),
+        "created_by": created_by,
         "created_at": now,
         "updated_at": now,
         "profiles": profiles,

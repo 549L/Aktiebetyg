@@ -64,11 +64,6 @@
             <button type="submit">Analysera</button>
         </form>
 
-        <div id="industry-filter-chip" class="filter-chip hidden">
-            Filtrerar sökning på bransch: <strong id="industry-filter-label"></strong>
-            <button type="button" id="industry-filter-clear" aria-label="Rensa filter">✕</button>
-        </div>
-
         <div class="top-panels">
             <section id="top10">
                 <h3>Senast sökta</h3>
@@ -76,10 +71,11 @@
                 <p id="top10-empty" class="muted hidden">Inga analyserade aktier än — sök på en aktie för att komma igång.</p>
             </section>
 
-            <section id="industries-panel">
-                <h3>Branscher</h3>
-                <ul id="industries-list"></ul>
-                <p id="industries-empty" class="muted hidden">Inga analyserade aktier än.</p>
+            <section id="users-panel">
+                <h3>Sök användare</h3>
+                <input type="text" id="users-search" placeholder="Sök användarnamn..." autocomplete="off">
+                <ul id="users-list"></ul>
+                <p id="users-empty" class="muted hidden">Inga användare matchade sökningen.</p>
             </section>
         </div>
 
@@ -187,6 +183,19 @@
                 <span id="scale-editor-error" class="editor-error hidden"></span>
                 <button type="button" id="scale-save-btn">Spara betygsskala</button>
             </div>
+        </section>
+
+        <section id="user-profile" class="hidden">
+            <button type="button" id="user-profile-back" class="editor-back-btn">← Tillbaka</button>
+            <h2 id="user-profile-username"></h2>
+            <p id="user-profile-meta" class="muted"></p>
+
+            <h3>Betygsätt kontot</h3>
+            <div id="user-profile-rating" class="star-rating user-profile-rating"></div>
+
+            <h3>Betygsskalor skapade av användaren</h3>
+            <ul id="user-profile-scales" class="scale-list-plain"></ul>
+            <p id="user-profile-scales-empty" class="muted hidden">Inga egna betygsskalor än.</p>
         </section>
         </div>
     </main>

@@ -405,11 +405,36 @@ button:disabled {
 
 /* --- Skalredigeraren --- */
 
-#scale-editor {
+#scale-editor, #user-profile {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
+}
+
+#user-profile h3 {
+    margin: 24px 0 10px;
+    font-size: 1rem;
+}
+
+.user-profile-rating {
+    font-size: 1.4rem;
+}
+
+.user-profile-rating .star {
+    font-size: 1.4rem;
+}
+
+.scale-list-plain {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.scale-list-plain .scale-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .editor-back-btn {
@@ -859,50 +884,32 @@ input[type="range"].weight-slider::-moz-range-thumb {
     .top-panels { grid-template-columns: 1fr; }
 }
 
-#top10, #industries-panel {
+#top10, #users-panel {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 24px;
 }
 
-#top10 h3, #industries-panel h3 {
+#top10 h3, #users-panel h3 {
     margin: 0 0 12px;
 }
 
-#industries-list {
+#users-search {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+#users-list {
     margin: 0;
     padding: 0;
     list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-#industries-list li {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: var(--border);
-    color: var(--text);
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-#industries-list li:hover {
-    background: var(--accent);
-    color: white;
-}
-
-#industries-list li:hover .industry-count {
-    color: white;
-}
-
-.industry-count {
-    color: var(--muted);
-    font-size: 0.75rem;
 }
 
 #top10-list {
@@ -1309,7 +1316,7 @@ th {
         padding: 8px 16px;
     }
 
-    #top10, #industries-panel {
+    #top10, #users-panel {
         padding: 16px 18px;
     }
 

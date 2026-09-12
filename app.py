@@ -4,10 +4,11 @@ from flask import Flask, jsonify, render_template, request, session
 
 import ratings_store
 import scales_store
+import user_ratings_store
 import users_store
 from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
-from history_store import record_result, recent_n, distinct_industries
+from history_store import record_result, recent_n
 from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
 
 app = Flask(__name__)
@@ -89,11 +90,6 @@ def search(query):
     return jsonify(results)
 
 
-@app.route("/api/industries")
-def industries():
-    return jsonify(distinct_industries())
-
-
 @app.route("/api/analyze/<ticker>")
 def analyze(ticker):
     # ?scale= ersätter gamla ?style= - "growth"/"stability" är de inbyggda
@@ -143,7 +139,9 @@ def scales():
 
     body = request.get_json(silent=True) or {}
     try:
-        record = scales_store.create_scale(body.get("name"), body.get("profiles") or {}, color=body.get("color"))
+        record = scales_store.create_scale(
+            body.get("name"), body.get("profiles") or {}, color=body.get("color"), created_by=session.get("username")
+        )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(record), 201
@@ -185,6 +183,51 @@ def rate_scale(scale_id):
     body = request.get_json(silent=True) or {}
     try:
         summary = ratings_store.rate_scale(scale_id, session.get("username"), body.get("stars"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(summary)
+
+
+@app.route("/api/users")
+def users_search():
+    # Utan sökord: en kort standardlista (högst rankade konton överst),
+    # samma mönster som betygsskalor-panelen. Med sökord: alla konton vars
+    # användarnamn matchar, oavsett hur många - sökningen är tänkt att
+    # kunna hitta vem som helst, inte bara de mest populära.
+    query = request.args.get("q", "").strip().lower()
+    ratings = user_ratings_store.get_all_ratings()
+
+    rows = users_store.list_users()
+    if query:
+        rows = [u for u in rows if query in u["username"].lower()]
+
+    for row in rows:
+        row["rating"] = ratings.get(row["username"], {"average": None, "count": 0})
+
+    rows.sort(key=lambda u: (u["rating"]["average"] is None, -(u["rating"]["average"] or 0), u["username"].lower()))
+
+    if not query:
+        rows = rows[:5]
+    return jsonify(rows)
+
+
+@app.route("/api/users/<username>")
+def user_profile(username):
+    account = users_store.get_user(username)
+    if not account:
+        return jsonify({"error": "Användaren hittades inte."}), 404
+    account["rating"] = user_ratings_store.get_all_ratings().get(username, {"average": None, "count": 0})
+    account["scales"] = scales_store.list_scales_by_owner(username)
+    return jsonify(account)
+
+
+@app.route("/api/users/<username>/rating", methods=["POST"])
+def rate_user(username):
+    if not users_store.get_user(username):
+        return jsonify({"error": "Användaren hittades inte."}), 404
+    body = request.get_json(silent=True) or {}
+    try:
+        summary = user_ratings_store.rate_user(username, session.get("username"), body.get("stars"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(summary)

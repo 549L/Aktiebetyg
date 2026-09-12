@@ -102,4 +102,22 @@ def get_user(username):
     account = _load().get(username)
     if not account:
         return None
-    return {"username": username, "is_admin": account.get("is_admin", False)}
+    return {
+        "username": username,
+        "is_admin": account.get("is_admin", False),
+        "created_at": account.get("created_at"),
+    }
+
+
+def list_users():
+    """Alla konton (utan lösenordshash) - underlag för användarsökningen."""
+    _ensure_admin_seeded()
+    users = _load()
+    return [
+        {
+            "username": name,
+            "is_admin": account.get("is_admin", False),
+            "created_at": account.get("created_at"),
+        }
+        for name, account in users.items()
+    ]

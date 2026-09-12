@@ -40,27 +40,6 @@ let searchAbortController = null;
 let searchDebounceTimer = null;
 let activeSuggestionIndex = -1;
 let currentSuggestions = [];
-let currentIndustryFilter = null;
-
-const industryFilterChip = document.getElementById("industry-filter-chip");
-const industryFilterLabel = document.getElementById("industry-filter-label");
-const industryFilterClear = document.getElementById("industry-filter-clear");
-
-function setIndustryFilter(label) {
-    currentIndustryFilter = label;
-    industryFilterLabel.textContent = label;
-    industryFilterChip.classList.remove("hidden");
-    input.value = "";
-    hideSuggestions();
-    input.focus();
-}
-
-function clearIndustryFilter() {
-    currentIndustryFilter = null;
-    industryFilterChip.classList.add("hidden");
-}
-
-industryFilterClear.addEventListener("click", clearIndustryFilter);
 
 function hideSuggestions() {
     suggestionsEl.classList.add("hidden");
@@ -113,10 +92,7 @@ input.addEventListener("input", () => {
         searchAbortController = new AbortController();
 
         try {
-            const industryParam = currentIndustryFilter
-                ? `?industry=${encodeURIComponent(currentIndustryFilter)}`
-                : "";
-            const res = await fetch(`/api/search/${encodeURIComponent(query)}${industryParam}`, {
+            const res = await fetch(`/api/search/${encodeURIComponent(query)}`, {
                 signal: searchAbortController.signal,
             });
             const matches = await res.json();
@@ -200,32 +176,6 @@ async function loadTop10() {
     }
 }
 
-const industriesList = document.getElementById("industries-list");
-const industriesEmpty = document.getElementById("industries-empty");
-
-async function loadIndustries() {
-    try {
-        const res = await fetch("/api/industries");
-        const industries = await res.json();
-
-        industriesList.innerHTML = "";
-        if (industries.length === 0) {
-            industriesEmpty.classList.remove("hidden");
-            return;
-        }
-        industriesEmpty.classList.add("hidden");
-
-        industries.forEach((item) => {
-            const li = document.createElement("li");
-            li.innerHTML = `${item.label} <span class="industry-count">${item.count}</span>`;
-            li.addEventListener("click", () => setIndustryFilter(item.label));
-            industriesList.appendChild(li);
-        });
-    } catch (err) {
-        // Branschrutan är en extra funktion - misslyckas hämtningen visar vi bara ingenting.
-    }
-}
-
 form.addEventListener("submit", (e) => {
     e.preventDefault();
     hideSuggestions();
@@ -256,7 +206,6 @@ async function runAnalysis(ticker) {
         renderResult(data);
         statusEl.textContent = "";
         loadTop10();
-        loadIndustries();
     } catch (err) {
         statusEl.textContent = "Nätverksfel: kunde inte nå servern.";
         statusEl.classList.add("error");
@@ -795,6 +744,177 @@ function selectScale(scaleId) {
 }
 
 // ---------------------------------------------------------------------------
+// Sök användare - hittar konton på sidan och öppnar en profilsida med
+// kontots betygsskalor, när det skapades, och ett stjärnbetyg (1-5) på
+// själva kontot. Utan sökord visas bara de högst rankade kontona (samma
+// mönster som betygsskalor-listan) - sökningen visar alla träffar,
+// oavsett hur högt de är rankade.
+// ---------------------------------------------------------------------------
+
+const usersListEl = document.getElementById("users-list");
+const usersEmptyEl = document.getElementById("users-empty");
+const usersSearchInput = document.getElementById("users-search");
+let usersSearchDebounce = null;
+
+async function loadUsers(query = "") {
+    try {
+        const res = await fetch(`/api/users?q=${encodeURIComponent(query)}`);
+        renderUsersList(await res.json());
+    } catch (err) {
+        // Användarsökningen är en extra funktion - misslyckas hämtningen visar vi bara ingenting.
+    }
+}
+
+function buildReadonlyStars(rating) {
+    const wrap = document.createElement("div");
+    wrap.className = "star-rating";
+    const filled = rating.average !== null ? Math.round(rating.average) : 0;
+    for (let i = 1; i <= 5; i++) {
+        const star = document.createElement("span");
+        star.className = "star" + (i <= filled ? " filled" : "");
+        star.textContent = "★";
+        wrap.appendChild(star);
+    }
+    const countLabel = document.createElement("span");
+    countLabel.className = "star-rating-count";
+    countLabel.textContent = rating.count > 0 ? `${rating.average.toFixed(1)} (${rating.count})` : "Inga betyg än";
+    wrap.appendChild(countLabel);
+    return wrap;
+}
+
+function renderUsersList(users) {
+    usersListEl.innerHTML = "";
+    if (users.length === 0) {
+        usersEmptyEl.classList.remove("hidden");
+        return;
+    }
+    usersEmptyEl.classList.add("hidden");
+
+    users.forEach((user) => {
+        const li = document.createElement("li");
+        li.className = "scale-row";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "scale-row-name";
+        nameSpan.textContent = user.is_admin ? `${user.username} (admin)` : user.username;
+        li.appendChild(nameSpan);
+
+        li.appendChild(buildReadonlyStars(user.rating));
+        li.addEventListener("click", () => openUserProfile(user.username));
+        usersListEl.appendChild(li);
+    });
+}
+
+usersSearchInput.addEventListener("input", () => {
+    clearTimeout(usersSearchDebounce);
+    const query = usersSearchInput.value;
+    usersSearchDebounce = setTimeout(() => loadUsers(query), 250);
+});
+
+loadUsers();
+
+// --- Användarens profilsida ---
+
+const userProfileEl = document.getElementById("user-profile");
+const userProfileUsernameEl = document.getElementById("user-profile-username");
+const userProfileMetaEl = document.getElementById("user-profile-meta");
+const userProfileRatingEl = document.getElementById("user-profile-rating");
+const userProfileScalesEl = document.getElementById("user-profile-scales");
+const userProfileScalesEmptyEl = document.getElementById("user-profile-scales-empty");
+const userProfileBackBtn = document.getElementById("user-profile-back");
+
+function formatAccountDate(timestamp) {
+    if (!timestamp) return "okänt datum";
+    return new Date(timestamp * 1000).toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function buildInteractiveUserStars(username, rating) {
+    const wrap = document.createElement("div");
+    wrap.className = "star-rating";
+    const filled = rating.average !== null ? Math.round(rating.average) : 0;
+
+    for (let i = 1; i <= 5; i++) {
+        const star = document.createElement("button");
+        star.type = "button";
+        star.className = "star" + (i <= filled ? " filled" : "");
+        star.textContent = "★";
+        star.setAttribute("aria-label", `Betygsätt ${i} av 5 stjärnor`);
+        star.addEventListener("click", async () => {
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(username)}/rating`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stars: i }),
+                });
+                const updated = await res.json();
+                userProfileRatingEl.innerHTML = "";
+                userProfileRatingEl.appendChild(buildInteractiveUserStars(username, updated));
+                loadUsers(usersSearchInput.value);
+            } catch (err) {
+                // Betyget är en extra funktion - misslyckas anropet ändras inget.
+            }
+        });
+        wrap.appendChild(star);
+    }
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "star-rating-count";
+    countLabel.textContent = rating.count > 0 ? `${rating.average.toFixed(1)} (${rating.count})` : "Inga betyg än";
+    wrap.appendChild(countLabel);
+
+    return wrap;
+}
+
+async function openUserProfile(username) {
+    try {
+        const res = await fetch(`/api/users/${encodeURIComponent(username)}`);
+        const account = await res.json();
+        if (!res.ok) return;
+
+        userProfileUsernameEl.textContent = account.is_admin ? `${account.username} (admin)` : account.username;
+        userProfileMetaEl.textContent = `Medlem sedan ${formatAccountDate(account.created_at)}`;
+
+        userProfileRatingEl.innerHTML = "";
+        userProfileRatingEl.appendChild(buildInteractiveUserStars(account.username, account.rating));
+
+        userProfileScalesEl.innerHTML = "";
+        if (account.scales.length === 0) {
+            userProfileScalesEmptyEl.classList.remove("hidden");
+        } else {
+            userProfileScalesEmptyEl.classList.add("hidden");
+            account.scales.forEach((scale) => {
+                const li = document.createElement("li");
+                li.className = "scale-row";
+                const nameSpan = document.createElement("span");
+                nameSpan.className = "scale-row-name";
+                nameSpan.textContent = scale.name;
+                nameSpan.style.color = scale.color;
+                li.appendChild(nameSpan);
+                li.addEventListener("click", () => {
+                    closeUserProfile();
+                    selectScale(`custom:${scale.id}`);
+                });
+                userProfileScalesEl.appendChild(li);
+            });
+        }
+
+        mainViewEl.classList.add("hidden");
+        scaleEditorEl.classList.add("hidden");
+        userProfileEl.classList.remove("hidden");
+        window.scrollTo(0, 0);
+    } catch (err) {
+        // Går inte att öppna profilen - lämna kvar där man var.
+    }
+}
+
+function closeUserProfile() {
+    userProfileEl.classList.add("hidden");
+    mainViewEl.classList.remove("hidden");
+}
+
+userProfileBackBtn.addEventListener("click", closeUserProfile);
+
+// ---------------------------------------------------------------------------
 // Skalredigeraren - skapa/redigera en egen betygsskala. Öppnas som en egen
 // fullbred sektion (#scale-editor) som ersätter huvudinnehållet (#main-view)
 // tills man går tillbaka, istället för en trång modal - det behövs plats
@@ -1259,7 +1379,7 @@ function showLoggedIn(username) {
     if (!appInitialized) {
         appInitialized = true;
         loadTop10();
-        loadIndustries();
+        loadUsers();
         loadScales();
     }
 }
