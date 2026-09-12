@@ -1,18 +1,77 @@
-from flask import Flask, jsonify, render_template, request
+import os
+
+from flask import Flask, jsonify, render_template, request, session
 
 import ratings_store
 import scales_store
+import users_store
 from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
 from history_store import record_result, recent_n, distinct_industries
 from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
 
 app = Flask(__name__)
+# Krävs för att signera inloggningskakan (Flask-sessionen). Sätt
+# FLASK_SECRET_KEY på Render så inloggningar inte ogiltigförklaras vid
+# varje omstart - lokalt räcker en hårdkodad utvecklingsnyckel.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-osaker-nyckel-andra-i-produktion")
+
+# Hela sidan kräver inloggning utom själva inloggnings-/registreringsflödet
+# och statiska filer (annars skulle inte ens inloggningsformuläret gå att
+# visa/stila). Se users_store.py för kontona - ett admin-konto ("549L")
+# skapas automatiskt.
+_PUBLIC_ENDPOINTS = {"index", "login", "register", "me", "static"}
+
+
+@app.before_request
+def _require_login():
+    if request.endpoint in _PUBLIC_ENDPOINTS or request.endpoint is None:
+        return None
+    if not session.get("username"):
+        return jsonify({"error": "Du måste logga in för att använda Aktiebetyg."}), 401
+    return None
 
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/api/register", methods=["POST"])
+def register():
+    body = request.get_json(silent=True) or {}
+    try:
+        account = users_store.create_user(body.get("username"), body.get("password"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    session["username"] = account["username"]
+    return jsonify(account), 201
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    body = request.get_json(silent=True) or {}
+    account = users_store.verify_login(body.get("username"), body.get("password"))
+    if not account:
+        return jsonify({"error": "Fel användarnamn eller lösenord."}), 401
+    session["username"] = account["username"]
+    return jsonify(account)
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"loggedOut": True})
+
+
+@app.route("/api/me")
+def me():
+    username = session.get("username")
+    account = users_store.get_user(username) if username else None
+    if not account:
+        session.clear()
+        return jsonify({"username": None})
+    return jsonify(account)
 
 
 @app.route("/api/search/<query>")
@@ -125,7 +184,7 @@ def ratings():
 def rate_scale(scale_id):
     body = request.get_json(silent=True) or {}
     try:
-        summary = ratings_store.rate_scale(scale_id, body.get("stars"))
+        summary = ratings_store.rate_scale(scale_id, session.get("username"), body.get("stars"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(summary)

@@ -26,6 +26,33 @@
             </svg>
             Aktiebetyg
         </h1>
+
+        <section id="login-gate">
+            <h2 id="login-gate-title">Logga in</h2>
+            <p class="subtitle">Du behöver ett konto för att använda Aktiebetyg.</p>
+            <form id="login-form">
+                <label class="editor-field">
+                    Användarnamn
+                    <input type="text" id="auth-username" autocomplete="username" required>
+                </label>
+                <label class="editor-field">
+                    Lösenord
+                    <input type="password" id="auth-password" autocomplete="current-password" required>
+                </label>
+                <span id="login-error" class="editor-error hidden"></span>
+                <div class="login-gate-actions">
+                    <button type="submit" id="login-submit-btn">Logga in</button>
+                    <button type="button" id="login-toggle-btn" class="login-toggle-btn">Skapa konto istället</button>
+                </div>
+            </form>
+        </section>
+
+        <div id="account-bar" class="hidden">
+            <span id="account-username"></span>
+            <button type="button" id="logout-btn">Logga ut</button>
+        </div>
+
+        <div id="app-content" class="hidden">
         <div id="main-view">
         <p class="subtitle">Skriv in ett bolagsnamn eller en ticker (t.ex. Volvo, Ericsson, AAPL) och få ett betyg 1-100 baserat på nyckeltal.</p>
 
@@ -161,6 +188,7 @@
                 <button type="button" id="scale-save-btn">Spara betygsskala</button>
             </div>
         </section>
+        </div>
     </main>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>

@@ -65,6 +65,69 @@ h1 {
     margin: 0 0 28px;
 }
 
+/* --- Inloggning --- */
+
+#login-gate {
+    max-width: 360px;
+    margin: 24px auto 0;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+#login-gate-title {
+    margin: 0 0 4px;
+    font-size: 1.3rem;
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-gate-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.login-toggle-btn {
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 6px;
+}
+
+.login-toggle-btn:hover {
+    color: var(--accent);
+    filter: none;
+}
+
+#account-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: -8px 0 16px;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+#logout-btn {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+#logout-btn:hover {
+    color: var(--text);
+    filter: none;
+}
+
 .badge-stack {
     display: flex;
     flex-direction: column;

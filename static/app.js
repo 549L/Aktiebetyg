@@ -200,8 +200,6 @@ async function loadTop10() {
     }
 }
 
-loadTop10();
-
 const industriesList = document.getElementById("industries-list");
 const industriesEmpty = document.getElementById("industries-empty");
 
@@ -227,8 +225,6 @@ async function loadIndustries() {
         // Branschrutan är en extra funktion - misslyckas hämtningen visar vi bara ingenting.
     }
 }
-
-loadIndustries();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -798,8 +794,6 @@ function selectScale(scaleId) {
     if (currentTicker) runAnalysis(currentTicker);
 }
 
-loadScales();
-
 // ---------------------------------------------------------------------------
 // Skalredigeraren - skapa/redigera en egen betygsskala. Öppnas som en egen
 // fullbred sektion (#scale-editor) som ersätter huvudinnehållet (#main-view)
@@ -1227,3 +1221,107 @@ scaleSaveBtn.addEventListener("click", async () => {
         scaleEditorError.classList.remove("hidden");
     }
 });
+
+// ---------------------------------------------------------------------------
+// Inloggning - hela sidan är låst bakom ett konto (bara användarnamn +
+// lösenord, se users_store.py). #app-content initieras (sökning, skalor,
+// historik osv.) först efter att /api/me bekräftat en aktiv inloggning.
+// ---------------------------------------------------------------------------
+
+const loginGateEl = document.getElementById("login-gate");
+const loginGateTitle = document.getElementById("login-gate-title");
+const accountBarEl = document.getElementById("account-bar");
+const accountUsernameEl = document.getElementById("account-username");
+const appContentEl = document.getElementById("app-content");
+const loginForm = document.getElementById("login-form");
+const authUsernameInput = document.getElementById("auth-username");
+const authPasswordInput = document.getElementById("auth-password");
+const loginError = document.getElementById("login-error");
+const loginSubmitBtn = document.getElementById("login-submit-btn");
+const loginToggleBtn = document.getElementById("login-toggle-btn");
+const logoutBtn = document.getElementById("logout-btn");
+
+let authMode = "login"; // "login" | "register"
+let appInitialized = false;
+
+function showLoggedOut() {
+    appContentEl.classList.add("hidden");
+    accountBarEl.classList.add("hidden");
+    loginGateEl.classList.remove("hidden");
+}
+
+function showLoggedIn(username) {
+    loginGateEl.classList.add("hidden");
+    accountUsernameEl.textContent = `Inloggad som ${username}`;
+    accountBarEl.classList.remove("hidden");
+    appContentEl.classList.remove("hidden");
+
+    if (!appInitialized) {
+        appInitialized = true;
+        loadTop10();
+        loadIndustries();
+        loadScales();
+    }
+}
+
+loginToggleBtn.addEventListener("click", () => {
+    authMode = authMode === "login" ? "register" : "login";
+    loginGateTitle.textContent = authMode === "login" ? "Logga in" : "Skapa konto";
+    loginSubmitBtn.textContent = authMode === "login" ? "Logga in" : "Skapa konto";
+    loginToggleBtn.textContent = authMode === "login" ? "Skapa konto istället" : "Logga in istället";
+    loginError.classList.add("hidden");
+});
+
+loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loginError.classList.add("hidden");
+    loginSubmitBtn.disabled = true;
+
+    const username = authUsernameInput.value.trim();
+    const password = authPasswordInput.value;
+    const endpoint = authMode === "login" ? "/api/login" : "/api/register";
+
+    try {
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            loginError.textContent = data.error || "Något gick fel.";
+            loginError.classList.remove("hidden");
+            return;
+        }
+        authPasswordInput.value = "";
+        showLoggedIn(data.username);
+    } catch (err) {
+        loginError.textContent = "Nätverksfel: kunde inte nå servern.";
+        loginError.classList.remove("hidden");
+    } finally {
+        loginSubmitBtn.disabled = false;
+    }
+});
+
+logoutBtn.addEventListener("click", async () => {
+    try {
+        await fetch("/api/logout", { method: "POST" });
+    } catch (err) {
+        // Även om anropet misslyckas nätverksmässigt - visa inloggningsvyn ändå.
+    }
+    showLoggedOut();
+});
+
+(async function checkLoginOnLoad() {
+    try {
+        const res = await fetch("/api/me");
+        const data = await res.json();
+        if (data.username) {
+            showLoggedIn(data.username);
+        } else {
+            showLoggedOut();
+        }
+    } catch (err) {
+        showLoggedOut();
+    }
+})();

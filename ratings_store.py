@@ -7,8 +7,11 @@ Sparas i Upstash Redis när UPSTASH_REDIS_REST_URL/-TOKEN är satta (så att
 betygen inte försvinner när Render-tjänsten somnar/startar om), annars i
 en lokal JSON-fil (data/scale_ratings.json) - se remote_store.py.
 
-Lagras som summa + antal per skala (inte varje enskilt betyg för sig) -
-genomsnittet räknas ut vid läsning.
+Lagras som {scale_id: {username: stars}} - ETT betyg per inloggad
+användare och skala. Sätter du ett nytt betyg på en skala du redan
+betygsatt ersätts ditt gamla, du kan alltså inte rösta flera gånger för
+att dra snittet åt ett håll (kräver inloggning, se users_store.py/
+app.py). Genomsnittet räknas ut vid läsning.
 """
 
 import json
@@ -42,9 +45,10 @@ def _save(ratings):
 
 
 def _summarize(entry):
-    if not entry or not entry.get("count"):
+    if not entry:
         return {"average": None, "count": 0}
-    return {"average": entry["sum"] / entry["count"], "count": entry["count"]}
+    values = list(entry.values())
+    return {"average": sum(values) / len(values), "count": len(values)}
 
 
 def get_all_ratings():
@@ -54,10 +58,17 @@ def get_all_ratings():
     return {scale_id: _summarize(entry) for scale_id, entry in ratings.items()}
 
 
-def rate_scale(scale_id, stars):
-    """Lägger till ett nytt betyg (1-5 stjärnor) och returnerar det
-    uppdaterade genomsnittet. Om flera personer sätter olika betyg blir
-    resultatet snittet av alla - t.ex. 5 + 3 ger 4.0."""
+def get_user_rating(scale_id, username):
+    """Det betyg (1-5) `username` redan satt på `scale_id`, eller None."""
+    return _load().get(scale_id, {}).get(username)
+
+
+def rate_scale(scale_id, username, stars):
+    """Sätter/ersätter `username`s betyg (1-5 stjärnor) på en skala och
+    returnerar det uppdaterade genomsnittet. Sätter flera olika personer
+    olika betyg blir resultatet snittet av alla - t.ex. 5 + 3 ger 4.0."""
+    if not username:
+        raise ValueError("Du måste vara inloggad för att betygsätta.")
     try:
         stars = float(stars)
     except (TypeError, ValueError):
@@ -66,15 +77,14 @@ def rate_scale(scale_id, stars):
         raise ValueError("Betyget måste vara mellan 1 och 5 stjärnor.")
 
     ratings = _load()
-    entry = ratings.setdefault(scale_id, {"sum": 0.0, "count": 0})
-    entry["sum"] += stars
-    entry["count"] += 1
+    entry = ratings.setdefault(scale_id, {})
+    entry[username] = stars
     _save(ratings)
     return _summarize(entry)
 
 
 def delete_rating(scale_id):
-    """Städar bort ett betyg när skalan den hör till tas bort."""
+    """Städar bort alla betyg när skalan de hör till tas bort."""
     ratings = _load()
     if scale_id in ratings:
         del ratings[scale_id]
