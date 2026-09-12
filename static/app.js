@@ -948,6 +948,65 @@ function formatRowValue(value, unit) {
     return Math.round(shown * 100) / 100;
 }
 
+function formatCurveNumber(value, unit) {
+    const n = Math.round(value * 100) / 100;
+    return unit === "%" ? `${(n * 100).toFixed(1)}%` : unit === "x" ? `${n}x` : `${n}`;
+}
+
+// Ritar exakt samma klockformade avklingningskurva som scoring.py faktiskt
+// räknar ut betyget med (_gaussian_falloff, sigma = tolerans/2.5) - så
+// bilden visar verkligheten, inte bara en illustration. Strecket vid
+// "idealvärde ± tolerans" är där betyget faller till ~13 poäng, precis som
+// i den riktiga uträkningen.
+function buildToleranceCurveSvg(type, ideal, tolerance, unit) {
+    const width = 260, height = 74, padX = 12, padY = 10;
+    const plotW = width - padX * 2, plotH = height - padY * 2;
+    const sigma = Math.max(tolerance, 1e-9) / 2.5;
+    const span = tolerance * 1.6;
+    const xMin = ideal - span;
+    const xMax = ideal + span;
+
+    const scoreAt = (v) => {
+        if (type === "higher_better") return v >= ideal ? 100 : 100 * Math.exp(-0.5 * ((ideal - v) / sigma) ** 2);
+        if (type === "lower_better") return v <= ideal ? 100 : 100 * Math.exp(-0.5 * ((v - ideal) / sigma) ** 2);
+        return 100 * Math.exp(-0.5 * ((v - ideal) / sigma) ** 2);
+    };
+    const xScale = (v) => padX + ((v - xMin) / (xMax - xMin)) * plotW;
+    const yScale = (score) => padY + (1 - score / 100) * plotH;
+
+    const steps = 48;
+    let path = "";
+    for (let i = 0; i <= steps; i++) {
+        const v = xMin + (i / steps) * (xMax - xMin);
+        path += (i === 0 ? "M" : "L") + xScale(v).toFixed(1) + "," + yScale(scoreAt(v)).toFixed(1) + " ";
+    }
+
+    const idealX = xScale(ideal).toFixed(1);
+    const edgeXs = type === "target"
+        ? [xScale(ideal - tolerance).toFixed(1), xScale(ideal + tolerance).toFixed(1)]
+        : type === "higher_better"
+            ? [xScale(ideal - tolerance).toFixed(1)]
+            : [xScale(ideal + tolerance).toFixed(1)];
+
+    const edgeLines = edgeXs.map((x) => `<line x1="${x}" y1="${padY}" x2="${x}" y2="${height - padY}" class="tolerance-edge-line"/>`).join("");
+
+    return `
+        <svg viewBox="0 0 ${width} ${height}" class="tolerance-curve" aria-hidden="true">
+            <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" class="tolerance-axis"/>
+            <path d="${path}" class="tolerance-path"/>
+            ${edgeLines}
+            <line x1="${idealX}" y1="${padY}" x2="${idealX}" y2="${height - padY}" class="tolerance-ideal-line"/>
+            <circle cx="${idealX}" cy="${yScale(100).toFixed(1)}" r="3" class="tolerance-ideal-dot"/>
+        </svg>
+        <div class="tolerance-visual-caption">
+            <span><span class="tolerance-dot-legend"></span> Idealvärde: <strong>${formatCurveNumber(ideal, unit)}</strong></span>
+            <span><span class="tolerance-edge-legend"></span> Blir dåligt betyg vid: <strong>${edgeXs.length === 2
+                ? `${formatCurveNumber(ideal - tolerance, unit)} / ${formatCurveNumber(ideal + tolerance, unit)}`
+                : formatCurveNumber(type === "higher_better" ? ideal - tolerance : ideal + tolerance, unit)}</strong></span>
+        </div>
+    `;
+}
+
 function renderMetricRows() {
     const rows = currentSlotRows();
     metricRowsEl.innerHTML = "";
@@ -968,34 +1027,59 @@ function renderMetricRows() {
         if (!catalogEntry) return;
         const unit = catalogEntry.unit;
         const unitSuffix = unit === "%" ? " (%)" : unit === "x" ? " (x)" : "";
+        const weightPct = formatRowValue(row.weight_pct, "");
 
         const li = document.createElement("li");
         li.className = "scale-metric-row";
         li.innerHTML = `
-            <span class="scale-metric-label">${catalogEntry.label}</span>
-            <label class="scale-metric-input">Vikt (%)
-                <input type="number" min="0" max="100" step="1" class="row-weight" value="${formatRowValue(row.weight_pct, "")}">
-            </label>
-            <label class="scale-metric-input">Ideal${unitSuffix}
-                <input type="number" step="any" class="row-ideal" value="${formatRowValue(row.ideal, unit)}">
-            </label>
-            <label class="scale-metric-input">Tolerans${unitSuffix}
-                <input type="number" step="any" min="0" class="row-tolerance" value="${formatRowValue(row.tolerance, unit)}">
-            </label>
-            <button type="button" class="scale-metric-remove" aria-label="Ta bort ${catalogEntry.label}">✕</button>
+            <div class="scale-metric-row-header">
+                <span class="scale-metric-label">${catalogEntry.label}</span>
+                <button type="button" class="scale-metric-remove" aria-label="Ta bort ${catalogEntry.label}">✕</button>
+            </div>
+            <div class="scale-metric-row-body">
+                <div class="weight-slider-wrap">
+                    <span class="weight-slider-value">${weightPct}%</span>
+                    <div class="weight-slider-track">
+                        <input type="range" min="1" max="100" step="1" class="row-weight weight-slider" value="${weightPct}">
+                    </div>
+                    <span class="weight-slider-caption">Vikt - dra för att höja/sänka</span>
+                </div>
+                <div class="tolerance-panel">
+                    <div class="tolerance-visual"></div>
+                    <div class="tolerance-inputs">
+                        <label class="scale-metric-input">Idealvärde${unitSuffix}
+                            <input type="number" step="any" class="row-ideal" value="${formatRowValue(row.ideal, unit)}">
+                        </label>
+                        <label class="scale-metric-input">Tolerans${unitSuffix}
+                            <input type="number" step="any" min="0" class="row-tolerance" value="${formatRowValue(row.tolerance, unit)}">
+                        </label>
+                    </div>
+                </div>
+            </div>
         `;
 
-        li.querySelector(".row-weight").addEventListener("input", (e) => {
+        const visualEl = li.querySelector(".tolerance-visual");
+        const refreshCurve = () => {
+            visualEl.innerHTML = buildToleranceCurveSvg(catalogEntry.type, row.ideal, row.tolerance || 1e-9, unit);
+        };
+        refreshCurve();
+
+        const weightSlider = li.querySelector(".row-weight");
+        const weightValueEl = li.querySelector(".weight-slider-value");
+        weightSlider.addEventListener("input", (e) => {
             row.weight_pct = parseFloat(e.target.value) || 0;
+            weightValueEl.textContent = `${row.weight_pct}%`;
             updateWeightIndicator();
         });
         li.querySelector(".row-ideal").addEventListener("input", (e) => {
             const raw = parseFloat(e.target.value) || 0;
             row.ideal = unit === "%" ? raw / 100 : raw;
+            refreshCurve();
         });
         li.querySelector(".row-tolerance").addEventListener("input", (e) => {
             const raw = parseFloat(e.target.value) || 0;
             row.tolerance = unit === "%" ? raw / 100 : raw;
+            refreshCurve();
         });
         li.querySelector(".scale-metric-remove").addEventListener("click", () => {
             rows.splice(index, 1);
