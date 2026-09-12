@@ -33,6 +33,17 @@ def _require_login():
     return None
 
 
+@app.after_request
+def _no_store_api(response):
+    # Svaren är personliga (t.ex. /api/recent skiljer sig per inloggat
+    # konto) - utan detta kan webbläsaren återanvända ett cachat svar från
+    # en annan användare efter att man loggat in som någon annan i samma
+    # flik/webbläsare.
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
