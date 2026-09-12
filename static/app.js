@@ -958,11 +958,17 @@ async function openUserProfile(username) {
             account.scales.forEach((scale) => {
                 const li = document.createElement("li");
                 li.className = "scale-row";
+
+                const topRow = document.createElement("div");
+                topRow.className = "scale-row-top";
                 const nameSpan = document.createElement("span");
                 nameSpan.className = "scale-row-name";
                 nameSpan.textContent = scale.name;
                 if (scale.color) nameSpan.style.color = scale.color;
-                li.appendChild(nameSpan);
+                topRow.appendChild(nameSpan);
+                li.appendChild(topRow);
+
+                li.appendChild(buildReadonlyStars(scale.rating));
                 li.addEventListener("click", () => {
                     closeUserProfile();
                     selectScale(scale.is_builtin ? scale.id : `custom:${scale.id}`);

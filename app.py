@@ -239,8 +239,17 @@ def user_profile(username):
     if not account:
         return jsonify({"error": "Användaren hittades inte."}), 404
     account["rating"] = user_ratings_store.get_all_ratings().get(username, {"average": None, "count": 0})
-    builtin_scales = _BUILTIN_SCALES_FOR_549L if username == "549L" else []
-    account["scales"] = builtin_scales + scales_store.list_scales_by_owner(username)
+
+    # dict(s) kopierar varje inbyggd skala - annars skulle "rating" nedan
+    # skrivas in i den delade _BUILTIN_SCALES_FOR_549L-listan permanent.
+    builtin_scales = [dict(s) for s in _BUILTIN_SCALES_FOR_549L] if username == "549L" else []
+    scales = builtin_scales + scales_store.list_scales_by_owner(username)
+
+    scale_ratings = ratings_store.get_all_ratings()
+    for scale in scales:
+        scale["rating"] = scale_ratings.get(scale["id"], {"average": None, "count": 0})
+    account["scales"] = scales
+
     return jsonify(account)
 
 
