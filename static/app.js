@@ -852,9 +852,31 @@ const userProfileScalesEmptyEl = document.getElementById("user-profile-scales-em
 const userProfileBackBtn = document.getElementById("user-profile-back");
 const userProfileAvatarControlsEl = document.getElementById("user-profile-avatar-controls");
 const userProfileAvatarInput = document.getElementById("user-profile-avatar-input");
-const userProfileAvatarBtn = document.getElementById("user-profile-avatar-btn");
-const userProfileAvatarRemoveBtn = document.getElementById("user-profile-avatar-remove-btn");
 const userProfileAvatarErrorEl = document.getElementById("user-profile-avatar-error");
+
+// "Byt profilbild"/"Ta bort profilbild" byggs (och rivs ned) i DOM:en här
+// istället för att bara döljas med CSS - så knapparna aldrig kan finnas
+// kvar av misstag när man tittar på någon annans profil.
+function renderOwnAvatarControls(isOwnProfile, hasAvatar) {
+    userProfileAvatarControlsEl.querySelectorAll("button").forEach((btn) => btn.remove());
+    userProfileAvatarControlsEl.classList.toggle("hidden", !isOwnProfile);
+    if (!isOwnProfile) return;
+
+    const changeBtn = document.createElement("button");
+    changeBtn.type = "button";
+    changeBtn.textContent = "Byt profilbild";
+    changeBtn.addEventListener("click", () => userProfileAvatarInput.click());
+
+    if (hasAvatar) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.textContent = "Ta bort profilbild";
+        removeBtn.addEventListener("click", removeOwnAvatar);
+        userProfileAvatarInput.after(changeBtn, removeBtn);
+    } else {
+        userProfileAvatarInput.after(changeBtn);
+    }
+}
 
 function formatAccountDate(timestamp) {
     if (!timestamp) return "okänt datum";
@@ -899,6 +921,11 @@ function buildInteractiveUserStars(username, rating) {
 }
 
 async function openUserProfile(username) {
+    // Fail-safe: nollställ kontrollerna direkt, innan vi ens vet vem som är
+    // inloggad - går hämtningen nedan fel ska "Byt profilbild" ändå aldrig
+    // kunna hamna synlig av misstag.
+    renderOwnAvatarControls(false, false);
+
     try {
         const [profileRes, meRes] = await Promise.all([
             fetch(`/api/users/${encodeURIComponent(username)}`),
@@ -917,8 +944,7 @@ async function openUserProfile(username) {
         userProfileMetaEl.textContent = `Medlem sedan ${formatAccountDate(account.created_at)}`;
 
         const isOwnProfile = Boolean(me.username) && account.username === me.username;
-        userProfileAvatarControlsEl.classList.toggle("hidden", !isOwnProfile);
-        userProfileAvatarRemoveBtn.classList.toggle("hidden", !isOwnProfile || !account.avatar);
+        renderOwnAvatarControls(isOwnProfile, isOwnProfile && Boolean(account.avatar));
         userProfileAvatarErrorEl.classList.add("hidden");
 
         userProfileRatingEl.innerHTML = "";
@@ -988,8 +1014,6 @@ function resizeImageFile(file, maxSize = 200, quality = 0.85) {
     });
 }
 
-userProfileAvatarBtn.addEventListener("click", () => userProfileAvatarInput.click());
-
 userProfileAvatarInput.addEventListener("change", async () => {
     const file = userProfileAvatarInput.files[0];
     userProfileAvatarInput.value = "";
@@ -1018,7 +1042,7 @@ userProfileAvatarInput.addEventListener("change", async () => {
         currentAvatar = data.avatar;
         renderAvatarInto(userProfileAvatarEl, currentUsername, currentAvatar);
         renderAccountAvatar();
-        userProfileAvatarRemoveBtn.classList.remove("hidden");
+        renderOwnAvatarControls(true, true);
         loadUsers(usersSearchInput.value);
     } catch (err) {
         userProfileAvatarErrorEl.textContent = "Kunde inte läsa eller skala om bilden.";
@@ -1026,7 +1050,7 @@ userProfileAvatarInput.addEventListener("change", async () => {
     }
 });
 
-userProfileAvatarRemoveBtn.addEventListener("click", async () => {
+async function removeOwnAvatar() {
     try {
         await fetch("/api/me/avatar", { method: "DELETE" });
     } catch (err) {
@@ -1036,9 +1060,9 @@ userProfileAvatarRemoveBtn.addEventListener("click", async () => {
     currentAvatar = null;
     renderAvatarInto(userProfileAvatarEl, currentUsername, null);
     renderAccountAvatar();
-    userProfileAvatarRemoveBtn.classList.add("hidden");
+    renderOwnAvatarControls(true, false);
     loadUsers(usersSearchInput.value);
-});
+}
 
 // ---------------------------------------------------------------------------
 // Skalredigeraren - skapa/redigera en egen betygsskala. Öppnas som en egen
