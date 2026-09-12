@@ -522,6 +522,12 @@ button:disabled {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    border-color: var(--border);
+    margin-bottom: 8px;
+}
+
+.scale-list-plain .scale-row:last-child {
+    margin-bottom: 0;
 }
 
 .editor-back-btn {
