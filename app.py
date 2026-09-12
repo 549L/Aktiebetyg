@@ -34,13 +34,13 @@ def _require_login():
 
 
 @app.after_request
-def _no_store_api(response):
-    # Svaren är personliga (t.ex. /api/recent skiljer sig per inloggat
-    # konto) - utan detta kan webbläsaren återanvända ett cachat svar från
-    # en annan användare efter att man loggat in som någon annan i samma
-    # flik/webbläsare.
-    if request.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-store"
+def _no_store(response):
+    # Allt är personligt eller ändras ofta (API-svar skiljer sig per
+    # inloggat konto, JS/HTML kan ändras vid en omdeploy) - utan detta kan
+    # webbläsaren återanvända ett cachat svar från en annan användare efter
+    # att man loggat in som någon annan i samma flik, eller köra gammal
+    # cachad app.js/index.html efter en uppdatering.
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 

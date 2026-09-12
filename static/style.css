@@ -127,6 +127,14 @@ h1 {
     overflow: hidden;
 }
 
+#account-avatar, #account-username {
+    cursor: pointer;
+}
+
+#account-avatar:hover, #account-username:hover {
+    color: var(--accent);
+}
+
 .avatar img {
     width: 100%;
     height: 100%;

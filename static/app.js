@@ -900,15 +900,23 @@ function buildInteractiveUserStars(username, rating) {
 
 async function openUserProfile(username) {
     try {
-        const res = await fetch(`/api/users/${encodeURIComponent(username)}`);
-        const account = await res.json();
-        if (!res.ok) return;
+        const [profileRes, meRes] = await Promise.all([
+            fetch(`/api/users/${encodeURIComponent(username)}`),
+            fetch("/api/me"),
+        ]);
+        const account = await profileRes.json();
+        if (!profileRes.ok) return;
+
+        // Kollar vem som faktiskt är inloggad just nu (istället för att lita
+        // på den lokala `currentUsername`-variabeln) så att "Byt profilbild"
+        // aldrig kan hamna kvar synlig på någon annans profil.
+        const me = await meRes.json();
 
         renderAvatarInto(userProfileAvatarEl, account.username, account.avatar);
         userProfileUsernameEl.textContent = account.is_admin ? `${account.username} (admin)` : account.username;
         userProfileMetaEl.textContent = `Medlem sedan ${formatAccountDate(account.created_at)}`;
 
-        const isOwnProfile = account.username === currentUsername;
+        const isOwnProfile = Boolean(me.username) && account.username === me.username;
         userProfileAvatarControlsEl.classList.toggle("hidden", !isOwnProfile);
         userProfileAvatarRemoveBtn.classList.toggle("hidden", !isOwnProfile || !account.avatar);
         userProfileAvatarErrorEl.classList.add("hidden");
@@ -1488,6 +1496,13 @@ let currentAvatar = null;
 function renderAccountAvatar() {
     renderAvatarInto(accountAvatarEl, currentUsername, currentAvatar);
 }
+
+function goToOwnProfile() {
+    if (currentUsername) openUserProfile(currentUsername);
+}
+
+accountAvatarEl.addEventListener("click", goToOwnProfile);
+accountUsernameEl.addEventListener("click", goToOwnProfile);
 
 function showLoggedOut() {
     currentUsername = null;
