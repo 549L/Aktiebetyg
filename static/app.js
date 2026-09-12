@@ -853,6 +853,8 @@ const userProfileBackBtn = document.getElementById("user-profile-back");
 const userProfileAvatarControlsEl = document.getElementById("user-profile-avatar-controls");
 const userProfileAvatarInput = document.getElementById("user-profile-avatar-input");
 const userProfileAvatarErrorEl = document.getElementById("user-profile-avatar-error");
+const userProfileBioEl = document.getElementById("user-profile-bio");
+const userProfileBioControlsEl = document.getElementById("user-profile-bio-controls");
 
 // "Byt profilbild"/"Ta bort profilbild" byggs (och rivs ned) i DOM:en här
 // istället för att bara döljas med CSS - så knapparna aldrig kan finnas
@@ -876,6 +878,59 @@ function renderOwnAvatarControls(isOwnProfile, hasAvatar) {
     } else {
         userProfileAvatarInput.after(changeBtn);
     }
+}
+
+// Redigeringsfältet för biografin byggs (och rivs ned) i DOM:en på samma
+// sätt som profilbildens knappar - existerar bara alls när man tittar på
+// sitt eget konto, så det aldrig kan hamna kvar redigerbart på någon
+// annans profil.
+function renderOwnBioControls(isOwnProfile, bio) {
+    userProfileBioControlsEl.innerHTML = "";
+    userProfileBioControlsEl.classList.toggle("hidden", !isOwnProfile);
+    if (!isOwnProfile) return;
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "user-profile-bio-input";
+    textarea.maxLength = 500;
+    textarea.placeholder = "Skriv något om dig själv...";
+    textarea.value = bio;
+
+    const actions = document.createElement("div");
+    actions.className = "user-profile-bio-actions";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.textContent = "Spara biografi";
+
+    const errorEl = document.createElement("span");
+    errorEl.className = "editor-error hidden";
+
+    saveBtn.addEventListener("click", async () => {
+        errorEl.classList.add("hidden");
+        try {
+            const res = await fetch("/api/me/bio", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bio: textarea.value }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                errorEl.textContent = data.error || "Kunde inte spara biografin.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+            textarea.value = data.bio;
+            userProfileBioEl.textContent = data.bio || "Ingen biografi än.";
+        } catch (err) {
+            errorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+            errorEl.classList.remove("hidden");
+        }
+    });
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(errorEl);
+    userProfileBioControlsEl.appendChild(textarea);
+    userProfileBioControlsEl.appendChild(actions);
 }
 
 function formatAccountDate(timestamp) {
@@ -922,9 +977,10 @@ function buildInteractiveUserStars(username, rating) {
 
 async function openUserProfile(username) {
     // Fail-safe: nollställ kontrollerna direkt, innan vi ens vet vem som är
-    // inloggad - går hämtningen nedan fel ska "Byt profilbild" ändå aldrig
-    // kunna hamna synlig av misstag.
+    // inloggad - går hämtningen nedan fel ska "Byt profilbild"/biografins
+    // redigeringsfält ändå aldrig kunna hamna synligt av misstag.
     renderOwnAvatarControls(false, false);
+    renderOwnBioControls(false, "");
 
     try {
         const [profileRes, meRes] = await Promise.all([
@@ -946,6 +1002,9 @@ async function openUserProfile(username) {
         const isOwnProfile = Boolean(me.username) && account.username === me.username;
         renderOwnAvatarControls(isOwnProfile, isOwnProfile && Boolean(account.avatar));
         userProfileAvatarErrorEl.classList.add("hidden");
+
+        userProfileBioEl.textContent = account.bio || "Ingen biografi än.";
+        renderOwnBioControls(isOwnProfile, account.bio || "");
 
         userProfileRatingEl.innerHTML = "";
         userProfileRatingEl.appendChild(buildInteractiveUserStars(account.username, account.rating));

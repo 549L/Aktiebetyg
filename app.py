@@ -284,6 +284,16 @@ def me_avatar():
     return jsonify({"avatar": avatar})
 
 
+@app.route("/api/me/bio", methods=["POST"])
+def me_bio():
+    body = request.get_json(silent=True) or {}
+    try:
+        bio = users_store.set_bio(session.get("username"), body.get("bio"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"bio": bio})
+
+
 @app.route("/api/chart/<ticker>")
 def chart(ticker):
     period = request.args.get("period", "1y")

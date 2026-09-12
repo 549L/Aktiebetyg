@@ -35,6 +35,8 @@ _ADMIN_PASSWORD = "1"
 _MAX_AVATAR_LENGTH = 300_000
 _ALLOWED_AVATAR_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
 
+_MAX_BIO_LENGTH = 500
+
 
 def _load():
     if remote_store.enabled():
@@ -114,6 +116,7 @@ def get_user(username):
         "is_admin": account.get("is_admin", False),
         "created_at": account.get("created_at"),
         "avatar": account.get("avatar"),
+        "bio": account.get("bio", ""),
     }
 
 
@@ -154,3 +157,18 @@ def remove_avatar(username):
     if username in users:
         users[username]["avatar"] = None
         _save(users)
+
+
+def set_bio(username, bio):
+    """Sätter `username`s biografi (fri text). Tom sträng tar bort den.
+    Kastar ValueError (svensk text) om den är för lång."""
+    bio = (bio or "").strip()
+    if len(bio) > _MAX_BIO_LENGTH:
+        raise ValueError(f"Biografin får vara högst {_MAX_BIO_LENGTH} tecken.")
+
+    users = _load()
+    if username not in users:
+        raise ValueError("Användaren hittades inte.")
+    users[username]["bio"] = bio
+    _save(users)
+    return bio
