@@ -113,13 +113,13 @@ def analyze(ticker):
     if "error" in result:
         return jsonify(result), 404
 
-    record_result(result)
+    record_result(session.get("username"), result)
     return jsonify(result)
 
 
 @app.route("/api/recent")
 def recent():
-    return jsonify(recent_n(10))
+    return jsonify(recent_n(session.get("username"), 10))
 
 
 @app.route("/api/metric-catalog")
