@@ -265,29 +265,45 @@ def _computed_fields(info, fear_greed, ma200):
 def analyze_ticker(ticker: str, view_style: str = None, custom_scale_profiles: dict = None):
     ticker = ticker.strip().upper()
     resolved_ticker = ticker
-    info = get_info(ticker)
+
+    # get_info (nyckeltalen, kräver en crumb-dans - se _new_session i
+    # yahoo_client.py) och kurshistoriken (Fear & Greed/MA200/graf, ingen
+    # crumb behövs) beror inte på varandra så länge tickern redan är giltig
+    # - det vanliga fallet, eftersom användaren nästan alltid väljer ett
+    # förslag från sökrutan. Kör dem parallellt från start istället för i
+    # sekvens - sparar flera sekunder per analys, mest märkbart när anropen
+    # går via en proxy (se yahoo_client.py).
+    #
+    # Ingen `with` här - hittas tickern inte alls (varken direkt eller via
+    # sökfallback nedan) ska felmeddelandet skickas tillbaka direkt, utan
+    # att vänta in den redan påbörjade (men nu oanvändbara) kurshistorik-
+    # hämtningen. `shutdown(wait=False)` överger den tråden i bakgrunden
+    # istället för att blockera svaret på den.
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    info_future = executor.submit(get_info, ticker)
+    signals_future = executor.submit(get_stock_signals, ticker)
+    info = info_future.result()
 
     if not _has_price(info):
-        # Användaren skrev troligen ett bolagsnamn/kortnamn snarare än en exakt
-        # Yahoo-ticker (t.ex. "Volvo" istället för "VOLV-B.ST") - slå upp den
-        # mest relevanta träffen och använd den istället.
+        # Användaren skrev troligen ett bolagsnamn/kortnamn snarare än en
+        # exakt Yahoo-ticker (t.ex. "Volvo" istället för "VOLV-B.ST") - slå
+        # upp den mest relevanta träffen och använd den istället.
+        # Kurshistoriken som redan hämtades ovan gäller då fel ticker och
+        # måste hämtas om.
         matches = search_symbols(ticker, limit=1)
         if matches:
             resolved_ticker = matches[0]["symbol"]
             info = get_info(resolved_ticker)
+            signals_future = executor.submit(get_stock_signals, resolved_ticker)
 
     if not _has_price(info):
+        executor.shutdown(wait=False)
         return {"error": f"Hittade ingen data för '{ticker}'. Kontrollera stavningen, eller välj ett förslag i listan."}
 
-    # Kursdata (Fear & Greed/MA200/graf) och textöversättningen är helt
-    # oberoende av varandra - kör dem parallellt istället för i sekvens.
-    # Sparar flera sekunder per analys, mest märkbart när anropen går via en
-    # proxy (se yahoo_client.py) där varje nätverksanrop kostar extra tid.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        signals_future = executor.submit(get_stock_signals, resolved_ticker)
-        description_future = executor.submit(_short_description, info.get("longBusinessSummary") or "")
-        signals = signals_future.result()
-        description = description_future.result()
+    description_future = executor.submit(_short_description, info.get("longBusinessSummary") or "")
+    signals = signals_future.result()
+    description = description_future.result()
+    executor.shutdown(wait=True)
 
     fear_greed = signals["fear_greed"]
     ma200 = signals["ma200"]

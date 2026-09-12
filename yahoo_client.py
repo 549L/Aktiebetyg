@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from curl_cffi import requests as creq
 
 from config.industries import translate_sector, translate_industry
+from ttl_cache import ttl_cache
 
 # Yahoo Finance blockerar molnleverantörers IP-adresser (Render m.fl.) med
 # 429/401-fel. Sätts miljövariabeln DATAIMPULSE_PROXY (t.ex.
@@ -103,10 +104,15 @@ def _unwrap(value):
     return value
 
 
+@ttl_cache(120)
 def _search_candidates(query: str, pool_size: int) -> list:
     """Hämtar och grundfiltrerar sökkandidater (rätt typ, ingen utländsk
     cross-listing/depåbevis, inga dubbletter) - utan att trunkera till en
     slutgiltig gräns. Delas av `search_symbols` och `search_by_industry`.
+
+    Cachad i 2 minuter - bolagsnamn/tickers ändras inte i sekundtakt, så
+    skriver man om eller backar i sökrutan slipper man vänta på Yahoo igen
+    för samma sökord.
     """
     quotes = []
     for attempt in range(4):
@@ -207,10 +213,15 @@ def search_by_industry(query: str, industry: str, limit: int = 8) -> list:
     return matches[:limit]
 
 
+@ttl_cache(60)
 def get_info(ticker: str) -> dict:
     """Hämtar nyckeltal för en ticker som en platt dict, t.ex.
     {"trailingPE": 35.4, "returnOnEquity": 1.48, "longName": "Apple Inc.", ...}
     Returnerar {} om tickern inte hittas.
+
+    Cachad i 60 sekunder - så att t.ex. ett byte av betygsskala för samma
+    aktie (eller att klicka på samma "senast sökta"-rad igen) inte behöver
+    göra om hela crumb-dansen mot Yahoo (se _new_session) på nytt.
     """
     results = None
     for attempt in range(4):
@@ -243,11 +254,16 @@ def get_info(ticker: str) -> dict:
     return flat
 
 
+@ttl_cache(60, is_success=lambda r: bool(r.get("points")))
 def get_chart_data(ticker: str, period: str = "1y") -> dict:
     """Hämtar historisk kursdata för en ticker. `period` är en av nycklarna
     i CHART_RANGES ("1d", "1w", "1y", "5y", "10y"). Returnerar
     {"points": [{"t": unix_sekunder, "close": pris}, ...], "currency": "USD"}
     eller {"points": [], "currency": ""} om inget hittas.
+
+    Cachad i 60 sekunder - att byta tillbaka till en tidsperiod man redan
+    tittat på (eller analysera samma aktie igen) ritar då grafen direkt
+    utan ett nytt anrop mot Yahoo.
     """
     params = CHART_RANGES.get(period, CHART_RANGES["1y"])
 

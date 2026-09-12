@@ -10,11 +10,24 @@ till svenska.
 
 import os
 import time
+from collections import OrderedDict
 
 from curl_cffi import requests as creq
 
 # Se yahoo_client.py för varför den här finns.
 _PROXY_URL = os.environ.get("DATAIMPULSE_PROXY")
+
+# Cachar bara RIKTIGA översättningar i en timme - samma bolagsbeskrivning
+# (t.ex. samma aktie analyserad igen, eller flera användare som tittar på
+# samma populära bolag) slipper då göra om upp till 4 försök mot Google
+# Translate. Medvetet en egen, enkel cache istället för ttl_cache.py:s
+# generella dekorator: funktionen returnerar originaltexten OÖVERSATT som
+# reserv om alla försök misslyckas, och det får ALDRIG cachas som om det
+# vore en lyckad översättning - då skulle en tillfällig nätverksstrul kunna
+# göra att en akties beskrivning visas oöversatt i upp till en timme efteråt.
+_CACHE_TTL = 3600
+_CACHE_MAX_ENTRIES = 500
+_cache = OrderedDict()
 
 
 def translate_to_swedish(text: str) -> str:
@@ -23,6 +36,13 @@ def translate_to_swedish(text: str) -> str:
     för att visa ett fel - en beskrivning på engelska är bättre än ingen alls."""
     if not text:
         return ""
+
+    cached = _cache.get(text)
+    if cached is not None:
+        cached_at, translated = cached
+        if time.time() - cached_at < _CACHE_TTL:
+            _cache.move_to_end(text)
+            return translated
 
     for attempt in range(4):
         try:
@@ -45,6 +65,10 @@ def translate_to_swedish(text: str) -> str:
 
                 translated = "".join(seg[0] for seg in segments if seg[0])
                 if translated:
+                    _cache[text] = (time.time(), translated)
+                    _cache.move_to_end(text)
+                    while len(_cache) > _CACHE_MAX_ENTRIES:
+                        _cache.popitem(last=False)
                     return translated
         except Exception:
             pass
