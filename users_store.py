@@ -28,6 +28,13 @@ _REDIS_KEY = "aktiebetyg:users"
 _ADMIN_USERNAME = "549L"
 _ADMIN_PASSWORD = "1"
 
+# Profilbilder lagras som en data-URL direkt på kontot (samma Redis-post) -
+# ingen separat filuppladdning/blob-lagring behövs. Bilden skalas ned och
+# komprimeras till JPEG i webbläsaren innan den skickas hit, så gränsen
+# nedan bara skyddar mot en orimligt stor eller manipulerad begäran.
+_MAX_AVATAR_LENGTH = 300_000
+_ALLOWED_AVATAR_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
+
 
 def _load():
     if remote_store.enabled():
@@ -94,7 +101,7 @@ def verify_login(username, password):
     account = users.get(username)
     if not account or not check_password_hash(account["password_hash"], password or ""):
         return None
-    return {"username": username, "is_admin": account.get("is_admin", False)}
+    return {"username": username, "is_admin": account.get("is_admin", False), "avatar": account.get("avatar")}
 
 
 def get_user(username):
@@ -106,6 +113,7 @@ def get_user(username):
         "username": username,
         "is_admin": account.get("is_admin", False),
         "created_at": account.get("created_at"),
+        "avatar": account.get("avatar"),
     }
 
 
@@ -118,6 +126,31 @@ def list_users():
             "username": name,
             "is_admin": account.get("is_admin", False),
             "created_at": account.get("created_at"),
+            "avatar": account.get("avatar"),
         }
         for name, account in users.items()
     ]
+
+
+def set_avatar(username, data_url):
+    """Sätter `username`s profilbild till `data_url` (en data:image/...
+    base64-URL, redan nedskalad/komprimerad av klienten). Kastar ValueError
+    (svensk text) om värdet inte ser ut som en bild eller är för stort."""
+    if not isinstance(data_url, str) or not data_url.startswith(_ALLOWED_AVATAR_PREFIXES):
+        raise ValueError("Profilbilden måste vara en PNG-, JPEG- eller WEBP-bild.")
+    if len(data_url) > _MAX_AVATAR_LENGTH:
+        raise ValueError("Profilbilden är för stor - välj en mindre bild.")
+
+    users = _load()
+    if username not in users:
+        raise ValueError("Användaren hittades inte.")
+    users[username]["avatar"] = data_url
+    _save(users)
+    return data_url
+
+
+def remove_avatar(username):
+    users = _load()
+    if username in users:
+        users[username]["avatar"] = None
+        _save(users)

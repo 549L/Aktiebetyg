@@ -48,6 +48,7 @@
         </section>
 
         <div id="account-bar" class="hidden">
+            <span id="account-avatar" class="avatar avatar-sm"></span>
             <span id="account-username"></span>
             <button type="button" id="logout-btn">Logga ut</button>
         </div>
@@ -187,8 +188,21 @@
 
         <section id="user-profile" class="hidden">
             <button type="button" id="user-profile-back" class="editor-back-btn">← Tillbaka</button>
-            <h2 id="user-profile-username"></h2>
-            <p id="user-profile-meta" class="muted"></p>
+
+            <div id="user-profile-header">
+                <span id="user-profile-avatar" class="avatar avatar-lg"></span>
+                <div>
+                    <h2 id="user-profile-username"></h2>
+                    <p id="user-profile-meta" class="muted"></p>
+                </div>
+            </div>
+
+            <div id="user-profile-avatar-controls" class="hidden">
+                <input type="file" id="user-profile-avatar-input" accept="image/png,image/jpeg,image/webp" class="hidden">
+                <button type="button" id="user-profile-avatar-btn">Byt profilbild</button>
+                <button type="button" id="user-profile-avatar-remove-btn" class="hidden">Ta bort profilbild</button>
+                <span id="user-profile-avatar-error" class="editor-error hidden"></span>
+            </div>
 
             <h3>Betygsätt kontot</h3>
             <div id="user-profile-rating" class="star-rating user-profile-rating"></div>

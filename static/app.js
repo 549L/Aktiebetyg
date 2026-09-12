@@ -756,6 +756,24 @@ const usersEmptyEl = document.getElementById("users-empty");
 const usersSearchInput = document.getElementById("users-search");
 let usersSearchDebounce = null;
 
+// Profilbild med bokstavsavatar som reserv - delas av kontofältet,
+// användarlistan och profilsidan.
+function avatarInitial(username) {
+    return (username || "?").trim().charAt(0).toUpperCase();
+}
+
+function renderAvatarInto(el, username, avatarUrl) {
+    el.innerHTML = "";
+    if (avatarUrl) {
+        const img = document.createElement("img");
+        img.src = avatarUrl;
+        img.alt = username;
+        el.appendChild(img);
+    } else {
+        el.textContent = avatarInitial(username);
+    }
+}
+
 async function loadUsers(query = "") {
     try {
         const res = await fetch(`/api/users?q=${encodeURIComponent(query)}`);
@@ -794,11 +812,20 @@ function renderUsersList(users) {
         const li = document.createElement("li");
         li.className = "scale-row";
 
+        const topRow = document.createElement("div");
+        topRow.className = "scale-row-top";
+
+        const avatar = document.createElement("span");
+        avatar.className = "avatar avatar-sm";
+        renderAvatarInto(avatar, user.username, user.avatar);
+        topRow.appendChild(avatar);
+
         const nameSpan = document.createElement("span");
         nameSpan.className = "scale-row-name";
         nameSpan.textContent = user.is_admin ? `${user.username} (admin)` : user.username;
-        li.appendChild(nameSpan);
+        topRow.appendChild(nameSpan);
 
+        li.appendChild(topRow);
         li.appendChild(buildReadonlyStars(user.rating));
         li.addEventListener("click", () => openUserProfile(user.username));
         usersListEl.appendChild(li);
@@ -816,12 +843,18 @@ loadUsers();
 // --- Användarens profilsida ---
 
 const userProfileEl = document.getElementById("user-profile");
+const userProfileAvatarEl = document.getElementById("user-profile-avatar");
 const userProfileUsernameEl = document.getElementById("user-profile-username");
 const userProfileMetaEl = document.getElementById("user-profile-meta");
 const userProfileRatingEl = document.getElementById("user-profile-rating");
 const userProfileScalesEl = document.getElementById("user-profile-scales");
 const userProfileScalesEmptyEl = document.getElementById("user-profile-scales-empty");
 const userProfileBackBtn = document.getElementById("user-profile-back");
+const userProfileAvatarControlsEl = document.getElementById("user-profile-avatar-controls");
+const userProfileAvatarInput = document.getElementById("user-profile-avatar-input");
+const userProfileAvatarBtn = document.getElementById("user-profile-avatar-btn");
+const userProfileAvatarRemoveBtn = document.getElementById("user-profile-avatar-remove-btn");
+const userProfileAvatarErrorEl = document.getElementById("user-profile-avatar-error");
 
 function formatAccountDate(timestamp) {
     if (!timestamp) return "okänt datum";
@@ -871,8 +904,14 @@ async function openUserProfile(username) {
         const account = await res.json();
         if (!res.ok) return;
 
+        renderAvatarInto(userProfileAvatarEl, account.username, account.avatar);
         userProfileUsernameEl.textContent = account.is_admin ? `${account.username} (admin)` : account.username;
         userProfileMetaEl.textContent = `Medlem sedan ${formatAccountDate(account.created_at)}`;
+
+        const isOwnProfile = account.username === currentUsername;
+        userProfileAvatarControlsEl.classList.toggle("hidden", !isOwnProfile);
+        userProfileAvatarRemoveBtn.classList.toggle("hidden", !isOwnProfile || !account.avatar);
+        userProfileAvatarErrorEl.classList.add("hidden");
 
         userProfileRatingEl.innerHTML = "";
         userProfileRatingEl.appendChild(buildInteractiveUserStars(account.username, account.rating));
@@ -888,11 +927,11 @@ async function openUserProfile(username) {
                 const nameSpan = document.createElement("span");
                 nameSpan.className = "scale-row-name";
                 nameSpan.textContent = scale.name;
-                nameSpan.style.color = scale.color;
+                if (scale.color) nameSpan.style.color = scale.color;
                 li.appendChild(nameSpan);
                 li.addEventListener("click", () => {
                     closeUserProfile();
-                    selectScale(`custom:${scale.id}`);
+                    selectScale(scale.is_builtin ? scale.id : `custom:${scale.id}`);
                 });
                 userProfileScalesEl.appendChild(li);
             });
@@ -913,6 +952,85 @@ function closeUserProfile() {
 }
 
 userProfileBackBtn.addEventListener("click", closeUserProfile);
+
+// --- Profilbild - läses in lokalt, skalas ned till max 200px och
+// komprimeras till JPEG i webbläsaren innan uppladdning, så att en stor
+// telefonbild aldrig skickas rå till servern/Redis. ---
+
+function resizeImageFile(file, maxSize = 200, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Kunde inte läsa filen."));
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error("Filen är inte en giltig bild."));
+            img.onload = () => {
+                const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+                const w = Math.round(img.width * scale);
+                const h = Math.round(img.height * scale);
+                const canvas = document.createElement("canvas");
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL("image/jpeg", quality));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+userProfileAvatarBtn.addEventListener("click", () => userProfileAvatarInput.click());
+
+userProfileAvatarInput.addEventListener("change", async () => {
+    const file = userProfileAvatarInput.files[0];
+    userProfileAvatarInput.value = "";
+    if (!file) return;
+
+    userProfileAvatarErrorEl.classList.add("hidden");
+    if (!file.type.startsWith("image/")) {
+        userProfileAvatarErrorEl.textContent = "Välj en bildfil.";
+        userProfileAvatarErrorEl.classList.remove("hidden");
+        return;
+    }
+
+    try {
+        const dataUrl = await resizeImageFile(file);
+        const res = await fetch("/api/me/avatar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: dataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            userProfileAvatarErrorEl.textContent = data.error || "Kunde inte spara profilbilden.";
+            userProfileAvatarErrorEl.classList.remove("hidden");
+            return;
+        }
+        currentAvatar = data.avatar;
+        renderAvatarInto(userProfileAvatarEl, currentUsername, currentAvatar);
+        renderAccountAvatar();
+        userProfileAvatarRemoveBtn.classList.remove("hidden");
+        loadUsers(usersSearchInput.value);
+    } catch (err) {
+        userProfileAvatarErrorEl.textContent = "Kunde inte läsa eller skala om bilden.";
+        userProfileAvatarErrorEl.classList.remove("hidden");
+    }
+});
+
+userProfileAvatarRemoveBtn.addEventListener("click", async () => {
+    try {
+        await fetch("/api/me/avatar", { method: "DELETE" });
+    } catch (err) {
+        // Misslyckas anropet nätverksmässigt - lämna bilden orörd.
+        return;
+    }
+    currentAvatar = null;
+    renderAvatarInto(userProfileAvatarEl, currentUsername, null);
+    renderAccountAvatar();
+    userProfileAvatarRemoveBtn.classList.add("hidden");
+    loadUsers(usersSearchInput.value);
+});
 
 // ---------------------------------------------------------------------------
 // Skalredigeraren - skapa/redigera en egen betygsskala. Öppnas som en egen
@@ -1351,6 +1469,7 @@ scaleSaveBtn.addEventListener("click", async () => {
 const loginGateEl = document.getElementById("login-gate");
 const loginGateTitle = document.getElementById("login-gate-title");
 const accountBarEl = document.getElementById("account-bar");
+const accountAvatarEl = document.getElementById("account-avatar");
 const accountUsernameEl = document.getElementById("account-username");
 const appContentEl = document.getElementById("app-content");
 const loginForm = document.getElementById("login-form");
@@ -1363,16 +1482,28 @@ const logoutBtn = document.getElementById("logout-btn");
 
 let authMode = "login"; // "login" | "register"
 let appInitialized = false;
+let currentUsername = null;
+let currentAvatar = null;
+
+function renderAccountAvatar() {
+    renderAvatarInto(accountAvatarEl, currentUsername, currentAvatar);
+}
 
 function showLoggedOut() {
+    currentUsername = null;
+    currentAvatar = null;
     appContentEl.classList.add("hidden");
     accountBarEl.classList.add("hidden");
     loginGateEl.classList.remove("hidden");
 }
 
-function showLoggedIn(username) {
+function showLoggedIn(account) {
+    currentUsername = account.username;
+    currentAvatar = account.avatar || null;
+
     loginGateEl.classList.add("hidden");
-    accountUsernameEl.textContent = `Inloggad som ${username}`;
+    accountUsernameEl.textContent = `Inloggad som ${account.username}`;
+    renderAccountAvatar();
     accountBarEl.classList.remove("hidden");
     appContentEl.classList.remove("hidden");
 
@@ -1414,7 +1545,7 @@ loginForm.addEventListener("submit", async (e) => {
             return;
         }
         authPasswordInput.value = "";
-        showLoggedIn(data.username);
+        showLoggedIn(data);
     } catch (err) {
         loginError.textContent = "Nätverksfel: kunde inte nå servern.";
         loginError.classList.remove("hidden");
@@ -1437,7 +1568,7 @@ logoutBtn.addEventListener("click", async () => {
         const res = await fetch("/api/me");
         const data = await res.json();
         if (data.username) {
-            showLoggedIn(data.username);
+            showLoggedIn(data);
         } else {
             showLoggedOut();
         }

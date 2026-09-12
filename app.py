@@ -222,13 +222,25 @@ def users_search():
     return jsonify(rows)
 
 
+# De tre inbyggda skalorna (se BUILTIN_SCALES i app.js) är statiska och
+# lever inte i scales_store - för att de ändå ska synas på 549L:s profilsida
+# listas de här separat och märks med is_builtin så frontend vet att de ska
+# väljas via sitt bara id (t.ex. "growth"), inte "custom:<id>".
+_BUILTIN_SCALES_FOR_549L = [
+    {"id": "growth", "name": "549L Tillväxt Bolag", "is_builtin": True},
+    {"id": "stability", "name": "549L Stabila Bolag", "is_builtin": True},
+    {"id": "default", "name": "549L Vanliga bolag", "is_builtin": True},
+]
+
+
 @app.route("/api/users/<username>")
 def user_profile(username):
     account = users_store.get_user(username)
     if not account:
         return jsonify({"error": "Användaren hittades inte."}), 404
     account["rating"] = user_ratings_store.get_all_ratings().get(username, {"average": None, "count": 0})
-    account["scales"] = scales_store.list_scales_by_owner(username)
+    builtin_scales = _BUILTIN_SCALES_FOR_549L if username == "549L" else []
+    account["scales"] = builtin_scales + scales_store.list_scales_by_owner(username)
     return jsonify(account)
 
 
@@ -242,6 +254,21 @@ def rate_user(username):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(summary)
+
+
+@app.route("/api/me/avatar", methods=["POST", "DELETE"])
+def me_avatar():
+    username = session.get("username")
+    if request.method == "DELETE":
+        users_store.remove_avatar(username)
+        return jsonify({"avatar": None})
+
+    body = request.get_json(silent=True) or {}
+    try:
+        avatar = users_store.set_avatar(username, body.get("image"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"avatar": avatar})
 
 
 @app.route("/api/chart/<ticker>")
