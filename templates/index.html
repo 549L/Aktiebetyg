@@ -9,23 +9,33 @@
 </head>
 <body>
     <main>
-        <h1>
-            <svg class="brand-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                <circle cx="32" cy="32" r="31" fill="var(--panel)"/>
-                <circle cx="32" cy="32" r="20" stroke="currentColor" stroke-width="2.5" opacity="0.45"/>
-                <g stroke="currentColor" stroke-width="2.5" opacity="0.45" stroke-linecap="round">
-                    <line x1="32" y1="8" x2="32" y2="16"/>
-                    <line x1="52.78" y1="20" x2="45.86" y2="24"/>
-                    <line x1="52.78" y1="44" x2="45.86" y2="40"/>
-                    <line x1="32" y1="56" x2="32" y2="48"/>
-                    <line x1="11.22" y1="44" x2="18.14" y2="40"/>
-                    <line x1="11.22" y1="20" x2="18.14" y2="24"/>
-                </g>
-                <line x1="32" y1="32" x2="48" y2="11.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
-                <circle cx="32" cy="32" r="4.5" fill="currentColor"/>
-            </svg>
-            Aktiebetyg
-        </h1>
+        <div id="page-header">
+            <h1>
+                <svg class="brand-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                    <circle cx="32" cy="32" r="31" fill="var(--panel)"/>
+                    <circle cx="32" cy="32" r="20" stroke="currentColor" stroke-width="2.5" opacity="0.45"/>
+                    <g stroke="currentColor" stroke-width="2.5" opacity="0.45" stroke-linecap="round">
+                        <line x1="32" y1="8" x2="32" y2="16"/>
+                        <line x1="52.78" y1="20" x2="45.86" y2="24"/>
+                        <line x1="52.78" y1="44" x2="45.86" y2="40"/>
+                        <line x1="32" y1="56" x2="32" y2="48"/>
+                        <line x1="11.22" y1="44" x2="18.14" y2="40"/>
+                        <line x1="11.22" y1="20" x2="18.14" y2="24"/>
+                    </g>
+                    <line x1="32" y1="32" x2="48" y2="11.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+                    <circle cx="32" cy="32" r="4.5" fill="currentColor"/>
+                </svg>
+                Aktiebetyg
+            </h1>
+
+            <div id="account-bar" class="hidden">
+                <div id="account-identity">
+                    <span id="account-avatar" class="avatar avatar-sm"></span>
+                    <span id="account-username"></span>
+                </div>
+                <button type="button" id="logout-btn">Logga ut</button>
+            </div>
+        </div>
 
         <section id="login-gate">
             <h2 id="login-gate-title">Logga in</h2>
@@ -46,14 +56,6 @@
                 </div>
             </form>
         </section>
-
-        <div id="account-bar" class="hidden">
-            <div id="account-identity">
-                <span id="account-avatar" class="avatar avatar-sm"></span>
-                <span id="account-username"></span>
-            </div>
-            <button type="button" id="logout-btn">Logga ut</button>
-        </div>
 
         <div id="app-content" class="hidden">
         <div id="main-view">
