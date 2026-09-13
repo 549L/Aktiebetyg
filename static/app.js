@@ -666,11 +666,13 @@ function buildScaleRow(entry) {
         });
         actions.appendChild(deleteBtn);
 
+        topRow.appendChild(buildStarRating(rawId));
         topRow.appendChild(actions);
+    } else {
+        topRow.appendChild(buildStarRating(rawId));
     }
 
     li.appendChild(topRow);
-    li.appendChild(buildStarRating(rawId));
 
     return li;
 }
@@ -825,8 +827,9 @@ function renderUsersList(users) {
         nameSpan.textContent = user.is_admin ? `${user.username} (admin)` : user.username;
         topRow.appendChild(nameSpan);
 
+        topRow.appendChild(buildReadonlyStars(user.rating));
+
         li.appendChild(topRow);
-        li.appendChild(buildReadonlyStars(user.rating));
         li.addEventListener("click", () => openUserProfile(user.username));
         usersListEl.appendChild(li);
     });
