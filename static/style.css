@@ -1406,6 +1406,7 @@ th {
     #account-bar {
         flex-shrink: 0;
         gap: 8px;
+        font-size: 0.75rem;
     }
 
     #search-form {
