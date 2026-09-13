@@ -110,13 +110,25 @@
                 <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Community">−</button>
             </div>
             <div class="panel-body">
-                <ul id="community-messages"></ul>
-                <p id="community-empty" class="muted hidden">Inga meddelanden än — skriv det första!</p>
-                <form id="community-form">
-                    <input type="text" id="community-input" placeholder="Skriv ett meddelande..." autocomplete="off" maxlength="500">
-                    <button type="submit">Skicka</button>
-                </form>
-                <span id="community-error" class="editor-error hidden"></span>
+                <input type="text" id="community-search" placeholder="Sök chattar..." autocomplete="off">
+                <ul id="community-rooms-list"></ul>
+                <button type="button" id="create-room-btn">+ Skapa ny chatt</button>
+
+                <div id="create-room-form" class="hidden">
+                    <label class="editor-field">
+                        Namn på chatten
+                        <input type="text" id="new-room-name" placeholder="T.ex. Teknikaktier" maxlength="60">
+                    </label>
+                    <label class="editor-field">
+                        Länka till en aktie (valfritt)
+                        <input type="text" id="new-room-ticker" placeholder="T.ex. VOLV-B.ST">
+                    </label>
+                    <div class="create-room-actions">
+                        <button type="button" id="save-room-btn">Skapa</button>
+                        <button type="button" id="cancel-room-btn" class="login-toggle-btn">Avbryt</button>
+                    </div>
+                    <span id="create-room-error" class="editor-error hidden"></span>
+                </div>
             </div>
         </section>
 
@@ -143,6 +155,15 @@
             </div>
 
             <p id="company-description" class="description"></p>
+
+            <div id="result-chat-link" class="hidden">
+                <div class="panel-header">
+                    <h3>💬 Chatt om <span id="result-chat-ticker-label"></span></h3>
+                </div>
+                <p id="result-chat-name"></p>
+                <ul id="result-chat-preview"></ul>
+                <button type="button" id="result-chat-open-btn">Öppna chatt</button>
+            </div>
 
             <div class="chart-card">
                 <div class="chart-controls">
@@ -245,6 +266,21 @@
             <h3>Betygsskalor skapade av användaren</h3>
             <ul id="user-profile-scales" class="scale-list-plain"></ul>
             <p id="user-profile-scales-empty" class="muted hidden">Inga egna betygsskalor än.</p>
+        </section>
+
+        <section id="chat-room" class="hidden">
+            <button type="button" id="chat-room-back" class="editor-back-btn">← Tillbaka</button>
+            <h2 id="chat-room-title"></h2>
+            <p id="chat-room-meta" class="muted"></p>
+
+            <ul id="chat-room-messages"></ul>
+            <p id="chat-room-empty" class="muted hidden">Inga meddelanden än — skriv det första!</p>
+
+            <form id="chat-room-form">
+                <input type="text" id="chat-room-input" placeholder="Skriv ett meddelande..." autocomplete="off" maxlength="500">
+                <button type="submit">Skicka</button>
+            </form>
+            <span id="chat-room-error" class="editor-error hidden"></span>
         </section>
         </div>
     </main>

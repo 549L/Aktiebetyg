@@ -574,11 +574,15 @@ button:disabled {
 
 /* --- Skalredigeraren --- */
 
-#scale-editor, #user-profile {
+#scale-editor, #user-profile, #chat-room {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
+}
+
+#chat-room-title {
+    margin: 0 0 4px;
 }
 
 #user-profile h3 {
@@ -1070,7 +1074,54 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin-bottom: 24px;
 }
 
-#community-messages {
+#community-search {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+#community-rooms-list {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+}
+
+.room-ticker-tag {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(245, 197, 24, 0.12);
+    color: var(--accent);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.room-message-count {
+    font-size: 0.8rem;
+}
+
+#create-room-form {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+#create-room-form .editor-field {
+    margin-bottom: 12px;
+}
+
+.create-room-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#chat-room-messages, #result-chat-preview {
     list-style: none;
     margin: 0 0 14px;
     padding: 0;
@@ -1079,6 +1130,10 @@ input[type="range"].weight-slider::-moz-range-thumb {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+#result-chat-preview {
+    max-height: 240px;
 }
 
 .community-message {
@@ -1119,12 +1174,12 @@ input[type="range"].weight-slider::-moz-range-thumb {
     overflow-wrap: anywhere;
 }
 
-#community-form {
+#chat-room-form {
     display: flex;
     gap: 10px;
 }
 
-#community-input {
+#chat-room-input {
     flex: 1;
     padding: 8px 12px;
     border-radius: 8px;
@@ -1132,6 +1187,31 @@ input[type="range"].weight-slider::-moz-range-thumb {
     background: var(--bg);
     color: var(--text);
     font-size: 0.9rem;
+}
+
+#result-chat-link {
+    margin: -4px 0 20px;
+    padding: 16px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+#result-chat-link .panel-header {
+    margin-bottom: 8px;
+}
+
+#result-chat-link h3 {
+    margin: 0;
+    text-transform: none;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+#result-chat-name {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 0.85rem;
 }
 
 .panel-header {

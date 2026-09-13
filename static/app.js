@@ -222,6 +222,7 @@ async function runAnalysis(ticker) {
         renderResult(data);
         statusEl.textContent = "";
         loadTop10();
+        checkResultChat(data.ticker);
     } catch (err) {
         statusEl.textContent = "Nätverksfel: kunde inte nå servern.";
         statusEl.classList.add("error");
@@ -1627,17 +1628,26 @@ accountAvatarEl.addEventListener("click", goToOwnProfile);
 accountUsernameEl.addEventListener("click", goToOwnProfile);
 
 // ---------------------------------------------------------------------------
-// Community - en gemensam, publik chatt. Alla inloggade ser samma
-// meddelanden och kan skriva i den. Pollar med jämna mellanrum medan man är
-// inloggad så att andras nya meddelanden dyker upp utan att man manuellt
-// behöver ladda om sidan.
+// Community - namngivna, publika chattrum. Ett "General"-rum finns alltid,
+// och vem som helst inloggad kan skapa fler, valfritt länkade till en
+// specifik aktieticker - då dyker chatten upp i analysvyn för just den
+// aktien (se checkResultChat). Pollar med jämna mellanrum medan man är
+// inloggad så att andras nya meddelanden/rum dyker upp automatiskt.
 // ---------------------------------------------------------------------------
 
-const communityMessagesEl = document.getElementById("community-messages");
-const communityEmptyEl = document.getElementById("community-empty");
-const communityForm = document.getElementById("community-form");
-const communityInput = document.getElementById("community-input");
-const communityErrorEl = document.getElementById("community-error");
+let communityRooms = [];
+let communitySearchQuery = "";
+let currentRoomId = null;
+
+const communitySearchInput = document.getElementById("community-search");
+const communityRoomsListEl = document.getElementById("community-rooms-list");
+const createRoomBtn = document.getElementById("create-room-btn");
+const createRoomFormEl = document.getElementById("create-room-form");
+const newRoomNameInput = document.getElementById("new-room-name");
+const newRoomTickerInput = document.getElementById("new-room-ticker");
+const saveRoomBtn = document.getElementById("save-room-btn");
+const cancelRoomBtn = document.getElementById("cancel-room-btn");
+const createRoomErrorEl = document.getElementById("create-room-error");
 
 function formatMessageTime(timestamp) {
     if (!timestamp) return "";
@@ -1649,13 +1659,127 @@ function formatMessageTime(timestamp) {
     });
 }
 
-function renderCommunityMessages(messages) {
-    communityMessagesEl.innerHTML = "";
-    if (messages.length === 0) {
-        communityEmptyEl.classList.remove("hidden");
+async function loadCommunityRooms() {
+    try {
+        const res = await fetch("/api/community/rooms");
+        communityRooms = await res.json();
+    } catch (err) {
+        communityRooms = [];
+    }
+    renderCommunityRoomsList();
+}
+
+function renderCommunityRoomsList() {
+    communityRoomsListEl.innerHTML = "";
+    const q = communitySearchQuery.trim().toLowerCase();
+    const rooms = q ? communityRooms.filter((r) => r.name.toLowerCase().includes(q)) : communityRooms;
+
+    if (rooms.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "Inga chattar matchade sökningen.";
+        communityRoomsListEl.appendChild(li);
         return;
     }
-    communityEmptyEl.classList.add("hidden");
+
+    rooms.forEach((room) => {
+        const li = document.createElement("li");
+        li.className = "scale-row";
+
+        const topRow = document.createElement("div");
+        topRow.className = "scale-row-top";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "scale-row-name";
+        nameSpan.textContent = room.name;
+        topRow.appendChild(nameSpan);
+
+        if (room.ticker) {
+            const tickerTag = document.createElement("span");
+            tickerTag.className = "room-ticker-tag";
+            tickerTag.textContent = room.ticker;
+            topRow.appendChild(tickerTag);
+        }
+        li.appendChild(topRow);
+
+        const countSpan = document.createElement("span");
+        countSpan.className = "muted room-message-count";
+        countSpan.textContent = room.message_count > 0 ? `${room.message_count} meddelanden` : "Inga meddelanden än";
+        li.appendChild(countSpan);
+
+        li.addEventListener("click", () => openChatRoom(room.id));
+        communityRoomsListEl.appendChild(li);
+    });
+}
+
+communitySearchInput.addEventListener("input", () => {
+    communitySearchQuery = communitySearchInput.value;
+    renderCommunityRoomsList();
+});
+
+createRoomBtn.addEventListener("click", () => {
+    createRoomFormEl.classList.toggle("hidden");
+    createRoomErrorEl.classList.add("hidden");
+    if (!createRoomFormEl.classList.contains("hidden")) {
+        newRoomNameInput.focus();
+    }
+});
+
+cancelRoomBtn.addEventListener("click", () => {
+    createRoomFormEl.classList.add("hidden");
+    newRoomNameInput.value = "";
+    newRoomTickerInput.value = "";
+    createRoomErrorEl.classList.add("hidden");
+});
+
+saveRoomBtn.addEventListener("click", async () => {
+    const name = newRoomNameInput.value.trim();
+    const ticker = newRoomTickerInput.value.trim();
+    createRoomErrorEl.classList.add("hidden");
+
+    try {
+        const res = await fetch("/api/community/rooms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, ticker }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            createRoomErrorEl.textContent = data.error || "Kunde inte skapa chatten.";
+            createRoomErrorEl.classList.remove("hidden");
+            return;
+        }
+        newRoomNameInput.value = "";
+        newRoomTickerInput.value = "";
+        createRoomFormEl.classList.add("hidden");
+        await loadCommunityRooms();
+        openChatRoom(data.id);
+    } catch (err) {
+        createRoomErrorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+        createRoomErrorEl.classList.remove("hidden");
+    }
+});
+
+// --- Själva chattrummet - en egen fullbred sektion, samma mönster som
+// profilsidan/skalredigeraren (ersätter #main-view tills man går tillbaka). ---
+
+const chatRoomEl = document.getElementById("chat-room");
+const chatRoomBackBtn = document.getElementById("chat-room-back");
+const chatRoomTitleEl = document.getElementById("chat-room-title");
+const chatRoomMetaEl = document.getElementById("chat-room-meta");
+const chatRoomMessagesEl = document.getElementById("chat-room-messages");
+const chatRoomEmptyEl = document.getElementById("chat-room-empty");
+const chatRoomForm = document.getElementById("chat-room-form");
+const chatRoomInput = document.getElementById("chat-room-input");
+const chatRoomErrorEl = document.getElementById("chat-room-error");
+
+function renderChatMessages(container, emptyEl, messages) {
+    container.innerHTML = "";
+    if (messages.length === 0) {
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        return;
+    }
+    if (emptyEl) emptyEl.classList.add("hidden");
 
     messages.forEach((msg) => {
         const li = document.createElement("li");
@@ -1682,58 +1806,148 @@ function renderCommunityMessages(messages) {
         textDiv.textContent = msg.text;
         li.appendChild(textDiv);
 
-        communityMessagesEl.appendChild(li);
+        container.appendChild(li);
     });
 
-    communityMessagesEl.scrollTop = communityMessagesEl.scrollHeight;
+    container.scrollTop = container.scrollHeight;
 }
 
-async function loadCommunity() {
+async function loadChatRoom(roomId) {
     try {
-        const res = await fetch("/api/community");
-        renderCommunityMessages(await res.json());
+        const res = await fetch(`/api/community/rooms/${roomId}`);
+        if (!res.ok) return;
+        const room = await res.json();
+        chatRoomTitleEl.textContent = room.name;
+        chatRoomMetaEl.textContent = room.ticker ? `Länkad till ${room.ticker}` : "Öppen för alla ämnen";
+        renderChatMessages(chatRoomMessagesEl, chatRoomEmptyEl, room.messages);
     } catch (err) {
         // Chatten är en extra funktion - misslyckas hämtningen visas bara inget nytt.
     }
 }
 
-communityForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = communityInput.value.trim();
-    if (!text) return;
+async function openChatRoom(roomId) {
+    currentRoomId = roomId;
+    await loadChatRoom(roomId);
+    mainViewEl.classList.add("hidden");
+    scaleEditorEl.classList.add("hidden");
+    userProfileEl.classList.add("hidden");
+    chatRoomEl.classList.remove("hidden");
+    window.scrollTo(0, 0);
+    startChatRoomPolling();
+}
 
-    communityErrorEl.classList.add("hidden");
+function closeChatRoom() {
+    currentRoomId = null;
+    stopChatRoomPolling();
+    chatRoomEl.classList.add("hidden");
+    mainViewEl.classList.remove("hidden");
+}
+
+chatRoomBackBtn.addEventListener("click", closeChatRoom);
+
+chatRoomForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = chatRoomInput.value.trim();
+    if (!text || !currentRoomId) return;
+
+    chatRoomErrorEl.classList.add("hidden");
     try {
-        const res = await fetch("/api/community", {
+        const res = await fetch(`/api/community/rooms/${currentRoomId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text }),
         });
         const data = await res.json();
         if (!res.ok) {
-            communityErrorEl.textContent = data.error || "Kunde inte skicka meddelandet.";
-            communityErrorEl.classList.remove("hidden");
+            chatRoomErrorEl.textContent = data.error || "Kunde inte skicka meddelandet.";
+            chatRoomErrorEl.classList.remove("hidden");
             return;
         }
-        communityInput.value = "";
-        loadCommunity();
+        chatRoomInput.value = "";
+        loadChatRoom(currentRoomId);
+        loadCommunityRooms();
     } catch (err) {
-        communityErrorEl.textContent = "Nätverksfel: kunde inte nå servern.";
-        communityErrorEl.classList.remove("hidden");
+        chatRoomErrorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+        chatRoomErrorEl.classList.remove("hidden");
     }
+});
+
+// --- Chattlänk i analysvyn - visas om en chatt är länkad till den
+// analyserade aktien. ---
+
+const resultChatLinkEl = document.getElementById("result-chat-link");
+const resultChatTickerLabelEl = document.getElementById("result-chat-ticker-label");
+const resultChatNameEl = document.getElementById("result-chat-name");
+const resultChatPreviewEl = document.getElementById("result-chat-preview");
+const resultChatOpenBtn = document.getElementById("result-chat-open-btn");
+let resultChatRoomId = null;
+
+async function checkResultChat(ticker) {
+    resultChatLinkEl.classList.add("hidden");
+    resultChatRoomId = null;
+    if (!ticker) return;
+
+    try {
+        const res = await fetch(`/api/community/rooms?ticker=${encodeURIComponent(ticker)}`);
+        const rooms = await res.json();
+        if (!rooms.length) return;
+        const room = rooms[0];
+
+        const fullRes = await fetch(`/api/community/rooms/${room.id}`);
+        const fullRoom = await fullRes.json();
+
+        resultChatRoomId = room.id;
+        resultChatTickerLabelEl.textContent = ticker;
+        resultChatNameEl.textContent = room.name;
+        renderChatMessages(resultChatPreviewEl, null, fullRoom.messages.slice(-3));
+        if (fullRoom.messages.length === 0) {
+            const li = document.createElement("li");
+            li.className = "muted";
+            li.textContent = "Inga meddelanden än — bli först med att skriva något!";
+            resultChatPreviewEl.appendChild(li);
+        }
+
+        resultChatLinkEl.classList.remove("hidden");
+    } catch (err) {
+        // Chattlänken är en extra funktion - misslyckas den visas den bara inte.
+    }
+}
+
+resultChatOpenBtn.addEventListener("click", () => {
+    if (resultChatRoomId) openChatRoom(resultChatRoomId);
 });
 
 let communityPollTimer = null;
 
 function startCommunityPolling() {
     stopCommunityPolling();
-    communityPollTimer = setInterval(loadCommunity, 8000);
+    communityPollTimer = setInterval(() => {
+        loadCommunityRooms();
+        if (currentRoomId) loadChatRoom(currentRoomId);
+    }, 8000);
 }
 
 function stopCommunityPolling() {
     if (communityPollTimer) {
         clearInterval(communityPollTimer);
         communityPollTimer = null;
+    }
+    stopChatRoomPolling();
+}
+
+let chatRoomPollTimer = null;
+
+function startChatRoomPolling() {
+    stopChatRoomPolling();
+    chatRoomPollTimer = setInterval(() => {
+        if (currentRoomId) loadChatRoom(currentRoomId);
+    }, 5000);
+}
+
+function stopChatRoomPolling() {
+    if (chatRoomPollTimer) {
+        clearInterval(chatRoomPollTimer);
+        chatRoomPollTimer = null;
     }
 }
 
@@ -1763,7 +1977,7 @@ function showLoggedIn(account) {
         loadTop10();
         loadUsers();
         loadScales();
-        loadCommunity();
+        loadCommunityRooms();
     }
     startCommunityPolling();
 }

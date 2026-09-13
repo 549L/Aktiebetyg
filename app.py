@@ -307,14 +307,39 @@ def me_bio():
     return jsonify({"bio": bio})
 
 
-@app.route("/api/community", methods=["GET", "POST"])
-def community():
+@app.route("/api/community/rooms", methods=["GET", "POST"])
+def community_rooms():
     if request.method == "GET":
-        return jsonify(community_store.list_messages())
+        ticker = request.args.get("ticker", "").strip()
+        if ticker:
+            return jsonify(community_store.find_rooms_by_ticker(ticker))
+        return jsonify(community_store.list_rooms())
 
     body = request.get_json(silent=True) or {}
     try:
-        message = community_store.post_message(session.get("username"), body.get("text"))
+        room = community_store.create_room(
+            body.get("name"), session.get("username"), ticker=body.get("ticker")
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(room), 201
+
+
+@app.route("/api/community/rooms/<room_id>")
+def community_room_detail(room_id):
+    room = community_store.get_room(room_id)
+    if room is None:
+        return jsonify({"error": "Chatten hittades inte."}), 404
+    return jsonify(room)
+
+
+@app.route("/api/community/rooms/<room_id>/messages", methods=["POST"])
+def community_room_messages(room_id):
+    if community_store.get_room(room_id) is None:
+        return jsonify({"error": "Chatten hittades inte."}), 404
+    body = request.get_json(silent=True) or {}
+    try:
+        message = community_store.post_message(room_id, session.get("username"), body.get("text"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify(message), 201
