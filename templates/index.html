@@ -48,15 +48,15 @@
         </section>
 
         <div id="account-bar" class="hidden">
-            <span id="account-avatar" class="avatar avatar-sm"></span>
-            <span id="account-username"></span>
+            <div id="account-identity">
+                <span id="account-avatar" class="avatar avatar-sm"></span>
+                <span id="account-username"></span>
+            </div>
             <button type="button" id="logout-btn">Logga ut</button>
         </div>
 
         <div id="app-content" class="hidden">
         <div id="main-view">
-        <p class="subtitle">Skriv in ett bolagsnamn eller en ticker (t.ex. Volvo, Ericsson, AAPL) och få ett betyg 1-100 baserat på nyckeltal.</p>
-
         <form id="search-form">
             <div class="input-wrapper">
                 <input type="text" id="ticker-input" placeholder="Bolagsnamn eller ticker, t.ex. Volvo" autocomplete="off">

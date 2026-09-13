@@ -109,10 +109,16 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 16px;
     margin: -8px 0 16px;
     font-size: 0.85rem;
     color: var(--muted);
+}
+
+#account-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .avatar {
