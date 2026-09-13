@@ -185,6 +185,28 @@ h1 {
     margin-bottom: 20px;
 }
 
+#user-profile-color-section {
+    margin-bottom: 20px;
+}
+
+#user-profile-color-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+#user-profile-color-controls input[type="color"] {
+    padding: 3px;
+    width: 60px;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+}
+
 #user-profile-bio {
     white-space: pre-wrap;
 }

@@ -307,6 +307,16 @@ def me_bio():
     return jsonify({"bio": bio})
 
 
+@app.route("/api/me/color", methods=["POST"])
+def me_color():
+    body = request.get_json(silent=True) or {}
+    try:
+        color = users_store.set_accent_color(session.get("username"), body.get("color"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"accent_color": color})
+
+
 @app.route("/api/community/rooms", methods=["GET", "POST"])
 def community_rooms():
     if request.method == "GET":

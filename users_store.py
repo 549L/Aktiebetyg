@@ -16,6 +16,7 @@ används, om det inte redan finns.
 
 import json
 import os
+import re
 import time
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -36,6 +37,11 @@ _MAX_AVATAR_LENGTH = 300_000
 _ALLOWED_AVATAR_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
 
 _MAX_BIO_LENGTH = 500
+
+# Egen accentfärg (ersätter appens gula standardfärg på knappar, ramar,
+# highlights m.m. genom hela sidan, se --accent i style.css) - bara hex
+# på formen #rrggbb accepteras, samma format som <input type="color"> ger.
+_ACCENT_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def _load():
@@ -103,7 +109,12 @@ def verify_login(username, password):
     account = users.get(username)
     if not account or not check_password_hash(account["password_hash"], password or ""):
         return None
-    return {"username": username, "is_admin": account.get("is_admin", False), "avatar": account.get("avatar")}
+    return {
+        "username": username,
+        "is_admin": account.get("is_admin", False),
+        "avatar": account.get("avatar"),
+        "accent_color": account.get("accent_color"),
+    }
 
 
 def get_user(username):
@@ -117,6 +128,7 @@ def get_user(username):
         "created_at": account.get("created_at"),
         "avatar": account.get("avatar"),
         "bio": account.get("bio", ""),
+        "accent_color": account.get("accent_color"),
     }
 
 
@@ -172,3 +184,19 @@ def set_bio(username, bio):
     users[username]["bio"] = bio
     _save(users)
     return bio
+
+
+def set_accent_color(username, color):
+    """Sätter `username`s egna accentfärg. `color` None/tom sträng
+    återställer till appens standardfärg. Kastar ValueError (svensk text)
+    om värdet inte är en giltig hex-färg på formen #rrggbb."""
+    color = (color or "").strip()
+    if color and not _ACCENT_COLOR_PATTERN.match(color):
+        raise ValueError("Färgen måste anges som en hex-kod, t.ex. #f5c518.")
+
+    users = _load()
+    if username not in users:
+        raise ValueError("Användaren hittades inte.")
+    users[username]["accent_color"] = color.lower() or None
+    _save(users)
+    return users[username]["accent_color"]

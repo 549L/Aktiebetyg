@@ -896,6 +896,22 @@ const userProfileAvatarInput = document.getElementById("user-profile-avatar-inpu
 const userProfileAvatarErrorEl = document.getElementById("user-profile-avatar-error");
 const userProfileBioEl = document.getElementById("user-profile-bio");
 const userProfileBioControlsEl = document.getElementById("user-profile-bio-controls");
+const userProfileColorSectionEl = document.getElementById("user-profile-color-section");
+const userProfileColorControlsEl = document.getElementById("user-profile-color-controls");
+
+// Egen accentfärg - ersätter --accent (se style.css) genom hela sidan när
+// man är inloggad. Sätts som en inline-stil på <html> så den vinner över
+// :root:s standardvärde, men body.view-growth/-stability (Tillväxt-/
+// Stabil-vyns egna gröna/blåa accentfärg, satt direkt på body-elementet)
+// fortsätter att slå igenom precis som innan - de är till för att tydligt
+// visa vilket läge man är i, oavsett egen färgsmak.
+function applyAccentColor(color) {
+    if (color) {
+        document.documentElement.style.setProperty("--accent", color);
+    } else {
+        document.documentElement.style.removeProperty("--accent");
+    }
+}
 
 // "Byt profilbild"/"Ta bort profilbild" byggs (och rivs ned) i DOM:en här
 // istället för att bara döljas med CSS - så knapparna aldrig kan finnas
@@ -974,6 +990,84 @@ function renderOwnBioControls(isOwnProfile, bio) {
     userProfileBioControlsEl.appendChild(actions);
 }
 
+// Färgväljaren byggs (och rivs ned) i DOM:en på samma sätt som
+// biografins redigeringsfält - existerar bara alls när man tittar på
+// sitt eget konto.
+function renderOwnColorControls(isOwnProfile, color) {
+    userProfileColorControlsEl.innerHTML = "";
+    userProfileColorSectionEl.classList.toggle("hidden", !isOwnProfile);
+    if (!isOwnProfile) return;
+
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = color || "#f5c518";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.textContent = "Spara färg";
+
+    const errorEl = document.createElement("span");
+    errorEl.className = "editor-error hidden";
+
+    saveBtn.addEventListener("click", async () => {
+        errorEl.classList.add("hidden");
+        try {
+            const res = await fetch("/api/me/color", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ color: colorInput.value }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                errorEl.textContent = data.error || "Kunde inte spara färgen.";
+                errorEl.classList.remove("hidden");
+                return;
+            }
+            currentAccentColor = data.accent_color;
+            applyAccentColor(currentAccentColor);
+            renderOwnColorControls(true, currentAccentColor);
+        } catch (err) {
+            errorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+            errorEl.classList.remove("hidden");
+        }
+    });
+
+    userProfileColorControlsEl.appendChild(colorInput);
+    userProfileColorControlsEl.appendChild(saveBtn);
+
+    if (color) {
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "login-toggle-btn";
+        resetBtn.textContent = "Återställ till standard";
+        resetBtn.addEventListener("click", async () => {
+            errorEl.classList.add("hidden");
+            try {
+                const res = await fetch("/api/me/color", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ color: null }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = data.error || "Kunde inte återställa färgen.";
+                    errorEl.classList.remove("hidden");
+                    return;
+                }
+                currentAccentColor = data.accent_color;
+                applyAccentColor(currentAccentColor);
+                renderOwnColorControls(true, currentAccentColor);
+            } catch (err) {
+                errorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+                errorEl.classList.remove("hidden");
+            }
+        });
+        userProfileColorControlsEl.appendChild(resetBtn);
+    }
+
+    userProfileColorControlsEl.appendChild(errorEl);
+}
+
 function formatAccountDate(timestamp) {
     if (!timestamp) return "okänt datum";
     return new Date(timestamp * 1000).toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" });
@@ -1022,6 +1116,7 @@ async function openUserProfile(username) {
     // redigeringsfält ändå aldrig kunna hamna synligt av misstag.
     renderOwnAvatarControls(false, false);
     renderOwnBioControls(false, "");
+    renderOwnColorControls(false, null);
 
     try {
         const [profileRes, meRes] = await Promise.all([
@@ -1046,6 +1141,7 @@ async function openUserProfile(username) {
 
         userProfileBioEl.textContent = account.bio || "Ingen biografi än.";
         renderOwnBioControls(isOwnProfile, account.bio || "");
+        renderOwnColorControls(isOwnProfile, account.accent_color || null);
 
         userProfileRatingEl.innerHTML = "";
         userProfileRatingEl.appendChild(buildInteractiveUserStars(account.username, account.rating));
@@ -1622,6 +1718,7 @@ let authMode = "login"; // "login" | "register"
 let appInitialized = false;
 let currentUsername = null;
 let currentAvatar = null;
+let currentAccentColor = null;
 let currentIsAdmin = false;
 
 function renderAccountAvatar() {
@@ -1969,17 +2066,21 @@ function stopChatRoomPolling() {
 function showLoggedOut() {
     currentUsername = null;
     currentAvatar = null;
+    currentAccentColor = null;
     currentIsAdmin = false;
     appContentEl.classList.add("hidden");
     accountBarEl.classList.add("hidden");
     loginGateEl.classList.remove("hidden");
+    applyAccentColor(null);
     stopCommunityPolling();
 }
 
 function showLoggedIn(account) {
     currentUsername = account.username;
     currentAvatar = account.avatar || null;
+    currentAccentColor = account.accent_color || null;
     currentIsAdmin = Boolean(account.is_admin);
+    applyAccentColor(currentAccentColor);
 
     loginGateEl.classList.add("hidden");
     accountUsernameEl.textContent = account.username;
