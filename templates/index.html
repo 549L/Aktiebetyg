@@ -121,7 +121,10 @@
                     </label>
                     <label class="editor-field">
                         Länka till en aktie (valfritt)
-                        <input type="text" id="new-room-ticker" placeholder="T.ex. VOLV-B.ST">
+                        <div class="input-wrapper">
+                            <input type="text" id="new-room-ticker" placeholder="T.ex. VOLV-B.ST" autocomplete="off">
+                            <ul id="new-room-ticker-suggestions" class="suggestions hidden"></ul>
+                        </div>
                     </label>
                     <div class="create-room-actions">
                         <button type="button" id="save-room-btn">Skapa</button>
@@ -155,15 +158,6 @@
             </div>
 
             <p id="company-description" class="description"></p>
-
-            <div id="result-chat-link" class="hidden">
-                <div class="panel-header">
-                    <h3>💬 Chatt om <span id="result-chat-ticker-label"></span></h3>
-                </div>
-                <p id="result-chat-name"></p>
-                <ul id="result-chat-preview"></ul>
-                <button type="button" id="result-chat-open-btn">Öppna chatt</button>
-            </div>
 
             <div class="chart-card">
                 <div class="chart-controls">
@@ -199,6 +193,15 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+            </div>
+
+            <div id="result-chat-link" class="hidden">
+                <div class="panel-header">
+                    <h3>💬 Chatt om <span id="result-chat-ticker-label"></span></h3>
+                </div>
+                <p id="result-chat-name"></p>
+                <ul id="result-chat-preview"></ul>
+                <button type="button" id="result-chat-open-btn">Öppna chatt</button>
             </div>
         </section>
         </div>

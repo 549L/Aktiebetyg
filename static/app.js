@@ -52,103 +52,111 @@ function renderFearGreed(fearGreed) {
     badge.classList.remove("hidden");
 }
 
-let searchAbortController = null;
-let searchDebounceTimer = null;
-let activeSuggestionIndex = -1;
-let currentSuggestions = [];
+// Ticker-autocomplete - återanvänds både av huvudsökrutan (väljer man ett
+// förslag analyseras aktien direkt) och av "länka till en aktie"-fältet när
+// man skapar en community-chatt (väljer man ett förslag fylls bara fältet i).
+function createTickerAutocomplete(inputEl, suggestionsListEl, onSelect) {
+    let abortController = null;
+    let debounceTimer = null;
+    let activeIndex = -1;
+    let suggestions = [];
 
-function hideSuggestions() {
-    suggestionsEl.classList.add("hidden");
-    suggestionsEl.innerHTML = "";
-    currentSuggestions = [];
-    activeSuggestionIndex = -1;
-}
-
-function renderSuggestions(matches) {
-    currentSuggestions = matches;
-    activeSuggestionIndex = -1;
-    suggestionsEl.innerHTML = "";
-
-    if (matches.length === 0) {
-        hideSuggestions();
-        return;
+    function hide() {
+        suggestionsListEl.classList.add("hidden");
+        suggestionsListEl.innerHTML = "";
+        suggestions = [];
+        activeIndex = -1;
     }
 
-    matches.forEach((match) => {
-        const li = document.createElement("li");
-        li.innerHTML = `<span>${match.name}</span><span class="suggestion-symbol">${match.symbol}${match.exchange ? " · " + match.exchange : ""}</span>`;
-        li.addEventListener("mousedown", (e) => {
-            // mousedown (before blur) så klicket hinner registreras innan listan döljs
-            e.preventDefault();
-            selectSuggestion(match);
+    function updateActive() {
+        [...suggestionsListEl.children].forEach((li, i) => {
+            li.classList.toggle("active", i === activeIndex);
         });
-        suggestionsEl.appendChild(li);
-    });
-
-    suggestionsEl.classList.remove("hidden");
-}
-
-function selectSuggestion(match) {
-    input.value = match.symbol;
-    hideSuggestions();
-    runAnalysis(match.symbol);
-}
-
-input.addEventListener("input", () => {
-    const query = input.value.trim();
-    clearTimeout(searchDebounceTimer);
-
-    if (query.length < 2) {
-        hideSuggestions();
-        return;
     }
 
-    searchDebounceTimer = setTimeout(async () => {
-        if (searchAbortController) searchAbortController.abort();
-        searchAbortController = new AbortController();
+    function pick(match) {
+        inputEl.value = match.symbol;
+        hide();
+        onSelect(match);
+    }
 
-        try {
-            const res = await fetch(`/api/search/${encodeURIComponent(query)}`, {
-                signal: searchAbortController.signal,
-            });
-            const matches = await res.json();
-            renderSuggestions(matches);
-        } catch (err) {
-            if (err.name !== "AbortError") hideSuggestions();
+    function render(matches) {
+        suggestions = matches;
+        activeIndex = -1;
+        suggestionsListEl.innerHTML = "";
+
+        if (matches.length === 0) {
+            hide();
+            return;
         }
-    }, 250);
-});
 
-input.addEventListener("keydown", (e) => {
-    if (suggestionsEl.classList.contains("hidden") || currentSuggestions.length === 0) return;
+        matches.forEach((match) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<span>${match.name}</span><span class="suggestion-symbol">${match.symbol}${match.exchange ? " · " + match.exchange : ""}</span>`;
+            li.addEventListener("mousedown", (e) => {
+                // mousedown (före blur) så klicket hinner registreras innan listan döljs
+                e.preventDefault();
+                pick(match);
+            });
+            suggestionsListEl.appendChild(li);
+        });
 
-    if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, currentSuggestions.length - 1);
-        updateActiveSuggestion();
-    } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
-        updateActiveSuggestion();
-    } else if (e.key === "Enter" && activeSuggestionIndex >= 0) {
-        e.preventDefault();
-        selectSuggestion(currentSuggestions[activeSuggestionIndex]);
-    } else if (e.key === "Escape") {
-        hideSuggestions();
+        suggestionsListEl.classList.remove("hidden");
     }
-});
 
-function updateActiveSuggestion() {
-    [...suggestionsEl.children].forEach((li, i) => {
-        li.classList.toggle("active", i === activeSuggestionIndex);
+    inputEl.addEventListener("input", () => {
+        const query = inputEl.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            hide();
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            if (abortController) abortController.abort();
+            abortController = new AbortController();
+
+            try {
+                const res = await fetch(`/api/search/${encodeURIComponent(query)}`, {
+                    signal: abortController.signal,
+                });
+                render(await res.json());
+            } catch (err) {
+                if (err.name !== "AbortError") hide();
+            }
+        }, 250);
     });
+
+    inputEl.addEventListener("keydown", (e) => {
+        if (suggestionsListEl.classList.contains("hidden") || suggestions.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, suggestions.length - 1);
+            updateActive();
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            updateActive();
+        } else if (e.key === "Enter" && activeIndex >= 0) {
+            e.preventDefault();
+            pick(suggestions[activeIndex]);
+        } else if (e.key === "Escape") {
+            hide();
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!suggestionsListEl.contains(e.target) && e.target !== inputEl) {
+            hide();
+        }
+    });
+
+    return { hide };
 }
 
-document.addEventListener("click", (e) => {
-    if (!suggestionsEl.contains(e.target) && e.target !== input) {
-        hideSuggestions();
-    }
-});
+const tickerAutocomplete = createTickerAutocomplete(input, suggestionsEl, (match) => runAnalysis(match.symbol));
 
 const top10List = document.getElementById("top10-list");
 const top10Empty = document.getElementById("top10-empty");
@@ -194,7 +202,7 @@ async function loadTop10() {
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
-    hideSuggestions();
+    tickerAutocomplete.hide();
     const ticker = input.value.trim();
     if (!ticker) return;
     runAnalysis(ticker);
@@ -1645,9 +1653,12 @@ const createRoomBtn = document.getElementById("create-room-btn");
 const createRoomFormEl = document.getElementById("create-room-form");
 const newRoomNameInput = document.getElementById("new-room-name");
 const newRoomTickerInput = document.getElementById("new-room-ticker");
+const newRoomTickerSuggestionsEl = document.getElementById("new-room-ticker-suggestions");
 const saveRoomBtn = document.getElementById("save-room-btn");
 const cancelRoomBtn = document.getElementById("cancel-room-btn");
 const createRoomErrorEl = document.getElementById("create-room-error");
+
+createTickerAutocomplete(newRoomTickerInput, newRoomTickerSuggestionsEl, () => {});
 
 function formatMessageTime(timestamp) {
     if (!timestamp) return "";
@@ -1881,8 +1892,10 @@ const resultChatNameEl = document.getElementById("result-chat-name");
 const resultChatPreviewEl = document.getElementById("result-chat-preview");
 const resultChatOpenBtn = document.getElementById("result-chat-open-btn");
 let resultChatRoomId = null;
+let resultChatRequestId = 0;
 
 async function checkResultChat(ticker) {
+    const requestId = ++resultChatRequestId;
     resultChatLinkEl.classList.add("hidden");
     resultChatRoomId = null;
     if (!ticker) return;
@@ -1890,11 +1903,13 @@ async function checkResultChat(ticker) {
     try {
         const res = await fetch(`/api/community/rooms?ticker=${encodeURIComponent(ticker)}`);
         const rooms = await res.json();
+        if (requestId !== resultChatRequestId) return;
         if (!rooms.length) return;
         const room = rooms[0];
 
         const fullRes = await fetch(`/api/community/rooms/${room.id}`);
         const fullRoom = await fullRes.json();
+        if (requestId !== resultChatRequestId) return;
 
         resultChatRoomId = room.id;
         resultChatTickerLabelEl.textContent = ticker;

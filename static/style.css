@@ -1190,7 +1190,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
 }
 
 #result-chat-link {
-    margin: -4px 0 20px;
+    margin: 24px 0 0;
     padding: 16px 18px;
     background: var(--panel);
     border: 1px solid var(--border);
