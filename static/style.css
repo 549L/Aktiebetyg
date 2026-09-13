@@ -1400,29 +1400,12 @@ th {
     }
 
     h1 {
-        font-size: 1.3rem;
-        gap: 6px;
+        font-size: 1.6rem;
     }
 
     #account-bar {
         flex-shrink: 0;
-        gap: 6px;
-        font-size: 0.65rem;
-    }
-
-    #account-identity {
-        gap: 4px;
-    }
-
-    .avatar-sm {
-        width: 20px;
-        height: 20px;
-        font-size: 0.6rem;
-    }
-
-    #logout-btn {
-        padding: 4px 8px;
-        font-size: 0.65rem;
+        gap: 8px;
     }
 
     #search-form {

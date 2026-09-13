@@ -1606,7 +1606,7 @@ function showLoggedIn(account) {
     currentAvatar = account.avatar || null;
 
     loginGateEl.classList.add("hidden");
-    accountUsernameEl.textContent = `Inloggad som ${account.username}`;
+    accountUsernameEl.textContent = account.username;
     renderAccountAvatar();
     accountBarEl.classList.remove("hidden");
     appContentEl.classList.remove("hidden");
