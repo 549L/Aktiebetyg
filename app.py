@@ -166,9 +166,21 @@ def scale_detail(scale_id):
             return jsonify({"error": "Betygsskalan hittades inte."}), 404
         return jsonify(record)
 
+    # Ändra/ta bort är bara tillåtet för den som skapade skalan (eller en
+    # admin) - annars skulle vem som helst inloggad kunna redigera eller
+    # radera andras betygsskalor via samma API som ägaren själv använder.
+    existing = scales_store.get_scale(scale_id)
+    if existing is None:
+        return jsonify({"error": "Betygsskalan hittades inte."}), 404
+
+    username = session.get("username")
+    account = users_store.get_user(username)
+    is_owner = existing.get("created_by") == username
+    if not is_owner and not (account and account.get("is_admin")):
+        return jsonify({"error": "Du kan bara ändra dina egna betygsskalor."}), 403
+
     if request.method == "DELETE":
-        if not scales_store.delete_scale(scale_id):
-            return jsonify({"error": "Betygsskalan hittades inte."}), 404
+        scales_store.delete_scale(scale_id)
         ratings_store.delete_rating(scale_id)
         return jsonify({"deleted": True})
 

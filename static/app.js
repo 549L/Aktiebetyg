@@ -578,7 +578,7 @@ const scalesSearchInput = document.getElementById("scales-search");
 
 function allScaleEntries() {
     const builtin = BUILTIN_SCALES.map((s) => ({ rawId: s.id, scaleId: s.id, name: s.name, isCustom: false, color: null }));
-    const custom = customScales.map((s) => ({ rawId: s.id, scaleId: `custom:${s.id}`, name: s.name, isCustom: true, color: s.color }));
+    const custom = customScales.map((s) => ({ rawId: s.id, scaleId: `custom:${s.id}`, name: s.name, isCustom: true, color: s.color, createdBy: s.created_by }));
     return [...builtin, ...custom];
 }
 
@@ -639,7 +639,7 @@ function renderScalesList() {
 }
 
 function buildScaleRow(entry) {
-    const { scaleId, rawId, name, isCustom, color } = entry;
+    const { scaleId, rawId, name, isCustom, color, createdBy } = entry;
     const li = document.createElement("li");
     li.className = "scale-row" + (scaleId === currentScaleId ? " active" : "");
 
@@ -653,7 +653,13 @@ function buildScaleRow(entry) {
     nameSpan.addEventListener("click", () => selectScale(scaleId));
     topRow.appendChild(nameSpan);
 
-    if (isCustom) {
+    // Man får bara redigera/ta bort betygsskalor man själv skapat (en
+    // admin undantaget) - annars skulle vem som helst inloggad kunna ändra
+    // eller radera andras skalor. Servern kollar samma sak - det här är
+    // bara för att inte ens visa knapparna när de ändå skulle nekas.
+    const isOwnScale = isCustom && (createdBy === currentUsername || currentIsAdmin);
+
+    if (isOwnScale) {
         const actions = document.createElement("span");
         actions.className = "scale-row-actions";
 
@@ -1607,6 +1613,7 @@ let authMode = "login"; // "login" | "register"
 let appInitialized = false;
 let currentUsername = null;
 let currentAvatar = null;
+let currentIsAdmin = false;
 
 function renderAccountAvatar() {
     renderAvatarInto(accountAvatarEl, currentUsername, currentAvatar);
@@ -1622,6 +1629,7 @@ accountUsernameEl.addEventListener("click", goToOwnProfile);
 function showLoggedOut() {
     currentUsername = null;
     currentAvatar = null;
+    currentIsAdmin = false;
     appContentEl.classList.add("hidden");
     accountBarEl.classList.add("hidden");
     loginGateEl.classList.remove("hidden");
@@ -1630,6 +1638,7 @@ function showLoggedOut() {
 function showLoggedIn(account) {
     currentUsername = account.username;
     currentAvatar = account.avatar || null;
+    currentIsAdmin = Boolean(account.is_admin);
 
     loginGateEl.classList.add("hidden");
     accountUsernameEl.textContent = account.username;
