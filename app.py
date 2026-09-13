@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, jsonify, render_template, request, session
 
+import community_store
 import ratings_store
 import scales_store
 import user_ratings_store
@@ -304,6 +305,19 @@ def me_bio():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify({"bio": bio})
+
+
+@app.route("/api/community", methods=["GET", "POST"])
+def community():
+    if request.method == "GET":
+        return jsonify(community_store.list_messages())
+
+    body = request.get_json(silent=True) or {}
+    try:
+        message = community_store.post_message(session.get("username"), body.get("text"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(message), 201
 
 
 @app.route("/api/chart/<ticker>")

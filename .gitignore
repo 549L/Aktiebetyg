@@ -7,5 +7,6 @@ data/custom_scales.json
 data/scale_ratings.json
 data/users.json
 data/user_ratings.json
+data/community.json
 .venv/
 venv/

@@ -104,6 +104,22 @@
             </section>
         </div>
 
+        <section id="community-panel">
+            <div class="panel-header">
+                <h3>Community</h3>
+                <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Community">−</button>
+            </div>
+            <div class="panel-body">
+                <ul id="community-messages"></ul>
+                <p id="community-empty" class="muted hidden">Inga meddelanden än — skriv det första!</p>
+                <form id="community-form">
+                    <input type="text" id="community-input" placeholder="Skriv ett meddelande..." autocomplete="off" maxlength="500">
+                    <button type="submit">Skicka</button>
+                </form>
+                <span id="community-error" class="editor-error hidden"></span>
+            </div>
+        </section>
+
         <div id="status"></div>
 
         <section id="result" class="hidden">

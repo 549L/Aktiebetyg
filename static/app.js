@@ -1626,6 +1626,117 @@ function goToOwnProfile() {
 accountAvatarEl.addEventListener("click", goToOwnProfile);
 accountUsernameEl.addEventListener("click", goToOwnProfile);
 
+// ---------------------------------------------------------------------------
+// Community - en gemensam, publik chatt. Alla inloggade ser samma
+// meddelanden och kan skriva i den. Pollar med jämna mellanrum medan man är
+// inloggad så att andras nya meddelanden dyker upp utan att man manuellt
+// behöver ladda om sidan.
+// ---------------------------------------------------------------------------
+
+const communityMessagesEl = document.getElementById("community-messages");
+const communityEmptyEl = document.getElementById("community-empty");
+const communityForm = document.getElementById("community-form");
+const communityInput = document.getElementById("community-input");
+const communityErrorEl = document.getElementById("community-error");
+
+function formatMessageTime(timestamp) {
+    if (!timestamp) return "";
+    return new Date(timestamp * 1000).toLocaleString("sv-SE", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function renderCommunityMessages(messages) {
+    communityMessagesEl.innerHTML = "";
+    if (messages.length === 0) {
+        communityEmptyEl.classList.remove("hidden");
+        return;
+    }
+    communityEmptyEl.classList.add("hidden");
+
+    messages.forEach((msg) => {
+        const li = document.createElement("li");
+        li.className = "community-message";
+
+        const head = document.createElement("div");
+        head.className = "community-message-head";
+
+        const userSpan = document.createElement("span");
+        userSpan.className = "community-message-user";
+        userSpan.textContent = msg.username;
+        userSpan.addEventListener("click", () => openUserProfile(msg.username));
+        head.appendChild(userSpan);
+
+        const timeSpan = document.createElement("span");
+        timeSpan.className = "community-message-time";
+        timeSpan.textContent = formatMessageTime(msg.created_at);
+        head.appendChild(timeSpan);
+
+        li.appendChild(head);
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "community-message-text";
+        textDiv.textContent = msg.text;
+        li.appendChild(textDiv);
+
+        communityMessagesEl.appendChild(li);
+    });
+
+    communityMessagesEl.scrollTop = communityMessagesEl.scrollHeight;
+}
+
+async function loadCommunity() {
+    try {
+        const res = await fetch("/api/community");
+        renderCommunityMessages(await res.json());
+    } catch (err) {
+        // Chatten är en extra funktion - misslyckas hämtningen visas bara inget nytt.
+    }
+}
+
+communityForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = communityInput.value.trim();
+    if (!text) return;
+
+    communityErrorEl.classList.add("hidden");
+    try {
+        const res = await fetch("/api/community", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            communityErrorEl.textContent = data.error || "Kunde inte skicka meddelandet.";
+            communityErrorEl.classList.remove("hidden");
+            return;
+        }
+        communityInput.value = "";
+        loadCommunity();
+    } catch (err) {
+        communityErrorEl.textContent = "Nätverksfel: kunde inte nå servern.";
+        communityErrorEl.classList.remove("hidden");
+    }
+});
+
+let communityPollTimer = null;
+
+function startCommunityPolling() {
+    stopCommunityPolling();
+    communityPollTimer = setInterval(loadCommunity, 8000);
+}
+
+function stopCommunityPolling() {
+    if (communityPollTimer) {
+        clearInterval(communityPollTimer);
+        communityPollTimer = null;
+    }
+}
+
 function showLoggedOut() {
     currentUsername = null;
     currentAvatar = null;
@@ -1633,6 +1744,7 @@ function showLoggedOut() {
     appContentEl.classList.add("hidden");
     accountBarEl.classList.add("hidden");
     loginGateEl.classList.remove("hidden");
+    stopCommunityPolling();
 }
 
 function showLoggedIn(account) {
@@ -1651,7 +1763,9 @@ function showLoggedIn(account) {
         loadTop10();
         loadUsers();
         loadScales();
+        loadCommunity();
     }
+    startCommunityPolling();
 }
 
 loginToggleBtn.addEventListener("click", () => {

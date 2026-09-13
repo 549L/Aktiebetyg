@@ -1059,11 +1059,79 @@ input[type="range"].weight-slider::-moz-range-thumb {
     .top-panels { grid-template-columns: 1fr; }
 }
 
-#top10, #users-panel {
+#top10, #users-panel, #community-panel {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 24px;
+}
+
+#community-panel {
+    margin-bottom: 24px;
+}
+
+#community-messages {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    max-height: 360px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.community-message {
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.community-message-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.community-message-user {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.community-message-user:hover {
+    text-decoration: underline;
+}
+
+.community-message-time {
+    font-size: 0.7rem;
+    color: var(--muted);
+    flex-shrink: 0;
+}
+
+.community-message-text {
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+#community-form {
+    display: flex;
+    gap: 10px;
+}
+
+#community-input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9rem;
 }
 
 .panel-header {
@@ -1074,7 +1142,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin: 0 0 12px;
 }
 
-#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3 {
+#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3, #community-panel .panel-header h3 {
     margin: 0;
 }
 
@@ -1546,7 +1614,7 @@ th {
         padding: 8px 16px;
     }
 
-    #top10, #users-panel {
+    #top10, #users-panel, #community-panel {
         padding: 16px 18px;
     }
 
