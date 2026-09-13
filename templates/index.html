@@ -69,23 +69,38 @@
 
         <div class="top-panels">
             <section id="top10">
-                <h3>Senast sökta</h3>
-                <ol id="top10-list"></ol>
-                <p id="top10-empty" class="muted hidden">Inga analyserade aktier än — sök på en aktie för att komma igång.</p>
+                <div class="panel-header">
+                    <h3>Senast sökta</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Senast sökta">−</button>
+                </div>
+                <div class="panel-body">
+                    <ol id="top10-list"></ol>
+                    <p id="top10-empty" class="muted hidden">Inga analyserade aktier än — sök på en aktie för att komma igång.</p>
+                </div>
             </section>
 
             <section id="users-panel">
-                <h3>Sök användare</h3>
-                <input type="text" id="users-search" placeholder="Sök användarnamn..." autocomplete="off">
-                <ul id="users-list"></ul>
-                <p id="users-empty" class="muted hidden">Inga användare matchade sökningen.</p>
+                <div class="panel-header">
+                    <h3>Sök användare</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Sök användare">−</button>
+                </div>
+                <div class="panel-body">
+                    <input type="text" id="users-search" placeholder="Sök användarnamn..." autocomplete="off">
+                    <ul id="users-list"></ul>
+                    <p id="users-empty" class="muted hidden">Inga användare matchade sökningen.</p>
+                </div>
             </section>
 
             <section id="scales-panel">
-                <h3>Sök betygsskalor</h3>
-                <input type="text" id="scales-search" placeholder="Sök betygsskalor..." autocomplete="off">
-                <ul id="scales-list"></ul>
-                <button type="button" id="create-scale-btn">+ Skapa egen betygsskala</button>
+                <div class="panel-header">
+                    <h3>Sök betygsskalor</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Sök betygsskalor">−</button>
+                </div>
+                <div class="panel-body">
+                    <input type="text" id="scales-search" placeholder="Sök betygsskalor..." autocomplete="off">
+                    <ul id="scales-list"></ul>
+                    <button type="button" id="create-scale-btn">+ Skapa egen betygsskala</button>
+                </div>
             </section>
         </div>
 

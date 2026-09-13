@@ -4,6 +4,22 @@ const suggestionsEl = document.getElementById("suggestions");
 const statusEl = document.getElementById("status");
 const result = document.getElementById("result");
 
+// ---------------------------------------------------------------------------
+// Ihopfällbara rutor - "Senast sökta"/"Sök användare"/"Sök betygsskalor" kan
+// fällas ihop till bara rubriken (t.ex. för en städigare vy), samma knapp
+// fäller ut den igen. Generell för alla tre - inget särfall per ruta.
+// ---------------------------------------------------------------------------
+document.querySelectorAll(".panel-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+        const section = btn.closest("section");
+        const title = section.querySelector(".panel-header h3").textContent;
+        const collapsed = section.classList.toggle("panel-collapsed");
+        btn.textContent = collapsed ? "+" : "−";
+        btn.setAttribute("aria-expanded", String(!collapsed));
+        btn.setAttribute("aria-label", (collapsed ? "Visa " : "Dölj ") + title);
+    });
+});
+
 const VIEW_STYLE_LABELS = {
     growth: "Tillväxtvy",
     stability: "Stabil vy",
