@@ -383,11 +383,31 @@ button:disabled {
 }
 
 #scales-panel {
+    grid-column: 1 / -1;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 24px;
-    margin-bottom: 24px;
+}
+
+/* Gott om plats i bredden (t.ex. fullskärm på en dator) - då får
+   "Senast sökta", "Sök användare" och "Sök betygsskalor" plats bredvid
+   varandra på samma rad istället för att betygsskalorna ligger på en
+   egen rad under. Sidan breddas något (760px -> 1100px) så alla tre
+   får rimligt om plats, annars orörd (samma 2-kolumnslayout ner till
+   mobilens 1 kolumn). */
+@media (min-width: 1000px) {
+    main {
+        max-width: 1100px;
+    }
+
+    .top-panels {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    #scales-panel {
+        grid-column: auto;
+    }
 }
 
 #scales-panel h3 {
