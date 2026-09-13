@@ -468,6 +468,23 @@ button:disabled {
     font-size: 0.95rem;
 }
 
+/* Avatar + namn i användarlistan hör ihop och ska aldrig separeras av en
+   radbrytning (till skillnad från .scale-row-name ovan, som gärna får ta
+   en egen rad för sig när det är trångt) - en egen liten flex-grupp som
+   inte tvingar namnet till 100% bredd. Mer specifik selektor än
+   .scale-row-name ovan så den vinner oavsett ordning i filen. */
+.user-row-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.user-row-identity .scale-row-name {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
 /* Gott om bredd per rad på breda skärmar (se main/.top-panels ovan) -
    namn och stjärnbetyg (eller namn och redigera-/ta bort-knapparna för
    egna skalor) får då plats sida vid sida istället för att stjärnorna
@@ -480,6 +497,19 @@ button:disabled {
     }
 
     .scale-row-name {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-row-identity {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .user-row-identity .scale-row-name {
         flex: 1 1 auto;
         min-width: 0;
         white-space: nowrap;

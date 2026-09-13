@@ -817,16 +817,23 @@ function renderUsersList(users) {
         const topRow = document.createElement("div");
         topRow.className = "scale-row-top";
 
+        // Avatar + namn hör ihop och ska aldrig separeras av en radbrytning
+        // (till skillnad från stjärnbetyget, som gärna får hamna på en egen
+        // rad när det är trångt) - därför en egen undergrupp här.
+        const identity = document.createElement("span");
+        identity.className = "user-row-identity";
+
         const avatar = document.createElement("span");
         avatar.className = "avatar avatar-sm";
         renderAvatarInto(avatar, user.username, user.avatar);
-        topRow.appendChild(avatar);
+        identity.appendChild(avatar);
 
         const nameSpan = document.createElement("span");
         nameSpan.className = "scale-row-name";
         nameSpan.textContent = user.is_admin ? `${user.username} (admin)` : user.username;
-        topRow.appendChild(nameSpan);
+        identity.appendChild(nameSpan);
 
+        topRow.appendChild(identity);
         topRow.appendChild(buildReadonlyStars(user.rating));
 
         li.appendChild(topRow);
