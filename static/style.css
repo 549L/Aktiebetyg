@@ -9,6 +9,8 @@
     --red: #ff6161;
     --yellow: #f5c518;
     --accent: var(--yellow);
+    --shadow-card: 0 4px 16px -6px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 2px 6px -2px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -21,6 +23,19 @@ body {
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     transition: background 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Synligt fokusläge på allt man kan tabba till, oavsett komponent - fanns
+   tidigare bara på #ticker-input, resten av formulärfälten/knapparna
+   saknade en tydlig fokusmarkering helt. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 main {
@@ -35,7 +50,9 @@ main {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
 }
 
 h1 {
@@ -68,6 +85,7 @@ h1 {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
+    box-shadow: var(--shadow-card);
 }
 
 #login-gate-title {
@@ -325,7 +343,7 @@ h1 {
 
 .suggestions li:hover,
 .suggestions li.active {
-    background: rgba(91, 140, 255, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .suggestions .suggestion-symbol {
@@ -345,10 +363,15 @@ button {
     color: white;
     font-size: 1rem;
     cursor: pointer;
+    transition: filter 0.15s ease, transform 0.08s ease;
 }
 
 button:hover {
     filter: brightness(1.1);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
 }
 
 button:disabled {
@@ -363,7 +386,7 @@ button:disabled {
     padding: 8px 14px;
     margin-bottom: 16px;
     border-radius: 8px;
-    background: rgba(91, 140, 255, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     border: 1px solid var(--accent);
     color: var(--text);
     font-size: 0.9rem;
@@ -395,6 +418,7 @@ button:disabled {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 24px;
+    box-shadow: var(--shadow-card);
 }
 
 /* Gott om plats i bredden (t.ex. fullskärm på en dator) - då får
@@ -449,7 +473,7 @@ button:disabled {
 }
 
 .scale-row.active {
-    background: rgba(245, 197, 24, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     border: 1px solid var(--accent);
 }
 
@@ -586,6 +610,7 @@ button:disabled {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
+    box-shadow: var(--shadow-card);
 }
 
 #chat-room-title {
@@ -753,6 +778,7 @@ button:disabled {
     border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--bg);
+    box-shadow: var(--shadow-sm);
 }
 
 .scale-metric-empty {
@@ -1035,7 +1061,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
 }
 
 .metric-picker li:hover {
-    background: rgba(245, 197, 24, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--accent);
 }
 
@@ -1060,6 +1086,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 24px;
+    box-shadow: var(--shadow-card);
 }
 
 #community-panel {
@@ -1087,7 +1114,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     flex-shrink: 0;
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(245, 197, 24, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--accent);
     font-size: 0.7rem;
     font-weight: 600;
@@ -1187,6 +1214,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
+    box-shadow: var(--shadow-sm);
 }
 
 #result-chat-link .panel-header {
@@ -1358,7 +1386,7 @@ section.panel-collapsed .panel-body {
     border-radius: 12px;
     padding: 24px;
     margin-top: 12px;
-    box-shadow: 0 0 0 1px var(--accent), 0 0 24px -12px var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 24px -12px var(--accent), var(--shadow-card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1429,9 +1457,9 @@ section.panel-collapsed .panel-body {
     border: 2px solid var(--border);
 }
 
-.score-badge.good { border-color: var(--green); color: var(--green); }
-.score-badge.medium { border-color: var(--yellow); color: var(--yellow); }
-.score-badge.bad { border-color: var(--red); color: var(--red); }
+.score-badge.good { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 10%, transparent); }
+.score-badge.medium { border-color: var(--yellow); color: var(--yellow); background: color-mix(in srgb, var(--yellow) 10%, transparent); }
+.score-badge.bad { border-color: var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
 
 .score-label {
     font-size: 0.9rem;
@@ -1503,7 +1531,7 @@ section.panel-collapsed .panel-body {
 }
 
 .indicator-toggle[aria-pressed="true"] {
-    background: rgba(91, 140, 255, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     border-color: var(--accent);
     color: var(--accent);
 }
@@ -1600,10 +1628,31 @@ ul li:last-child {
     border-bottom: none;
 }
 
+.positives li,
+.negatives li {
+    padding: 10px 14px 10px 36px;
+    margin-bottom: 8px;
+    border-bottom: none;
+    border-radius: 8px;
+}
+
+.positives li:last-child,
+.negatives li:last-child {
+    margin-bottom: 0;
+}
+
+.positives li {
+    background: color-mix(in srgb, var(--green) 6%, var(--bg));
+}
+
+.negatives li {
+    background: color-mix(in srgb, var(--red) 6%, var(--bg));
+}
+
 .positives li::before {
     content: "+";
     position: absolute;
-    left: 0;
+    left: 14px;
     color: var(--green);
     font-weight: 700;
 }
@@ -1611,7 +1660,7 @@ ul li:last-child {
 .negatives li::before {
     content: "\2212";
     position: absolute;
-    left: 0;
+    left: 14px;
     color: var(--red);
     font-weight: 700;
 }
@@ -1620,6 +1669,53 @@ ul li:last-child {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+}
+
+/* Smala, temaanpassade scrollbars istället för webbläsarens grå standard
+   - på alla ställen som kan bli scrollbara (förslagslistan, chattarna,
+   nyckeltalstabellen, nyckeltalsväljaren). Rent kosmetiskt, påverkar
+   inte scrollbeteendet. */
+.suggestions,
+#chat-room-messages,
+#result-chat-preview,
+.metric-picker ul,
+.table-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.suggestions::-webkit-scrollbar,
+#chat-room-messages::-webkit-scrollbar,
+#result-chat-preview::-webkit-scrollbar,
+.metric-picker ul::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.suggestions::-webkit-scrollbar-track,
+#chat-room-messages::-webkit-scrollbar-track,
+#result-chat-preview::-webkit-scrollbar-track,
+.metric-picker ul::-webkit-scrollbar-track,
+.table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.suggestions::-webkit-scrollbar-thumb,
+#chat-room-messages::-webkit-scrollbar-thumb,
+#result-chat-preview::-webkit-scrollbar-thumb,
+.metric-picker ul::-webkit-scrollbar-thumb,
+.table-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+}
+
+.suggestions::-webkit-scrollbar-thumb:hover,
+#chat-room-messages::-webkit-scrollbar-thumb:hover,
+#result-chat-preview::-webkit-scrollbar-thumb:hover,
+.metric-picker ul::-webkit-scrollbar-thumb:hover,
+.table-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
 }
 
 table {
@@ -1636,7 +1732,18 @@ th, td {
 
 th {
     color: var(--muted);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+tbody tr {
+    transition: background 0.1s ease;
+}
+
+tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .metric-ideal {
