@@ -11,6 +11,7 @@ from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
 from history_store import record_result, recent_n
 from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
+from triggers_data import TRIGGERS, TRIGGERS_DISCLAIMER
 
 app = Flask(__name__)
 # Krävs för att signera inloggningskakan (Flask-sessionen). Sätt
@@ -174,6 +175,13 @@ def metric_catalog():
 @app.route("/api/builtin-profiles")
 def builtin_profiles():
     return jsonify(BUILTIN_PROFILE_ROWS)
+
+
+@app.route("/api/triggers")
+def triggers():
+    # Se triggers_data.py - en handplockad lista, INTE en live datakälla.
+    # disclaimer skickas alltid med så frontend kan visa den synligt.
+    return jsonify({"disclaimer": TRIGGERS_DISCLAIMER, "triggers": TRIGGERS})
 
 
 @app.route("/api/scales", methods=["GET", "POST"])

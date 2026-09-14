@@ -2077,6 +2077,196 @@ chatRoomForm.addEventListener("submit", async (e) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Triggers tidslinjen - en egen fullbred sektion (samma "ersätter
+// #main-view"-mönster som profilsidan/chattrummet) med en horisontell
+// tidslinje över upp till 50 handplockade, rankade potentiella framtida
+// triggers (se triggers_data.py på serversidan - INTE en live datakälla,
+// därför visas disclaimer-texten alltid överst).
+// ---------------------------------------------------------------------------
+
+const triggersLauncherBtn = document.getElementById("triggers-launcher");
+const triggersTimelineEl = document.getElementById("triggers-timeline");
+const triggersBackBtn = document.getElementById("triggers-back");
+const triggersDisclaimerEl = document.getElementById("triggers-disclaimer");
+const triggersTimelineScrollEl = document.getElementById("triggers-timeline-scroll");
+const triggersTimelineTrackEl = document.getElementById("triggers-timeline-track");
+const triggersCountTabs = document.querySelectorAll(".triggers-count-tab");
+
+let triggersData = [];
+let triggersCount = 50;
+
+async function loadTriggers() {
+    triggersTimelineTrackEl.innerHTML = "";
+    try {
+        const res = await fetch("/api/triggers");
+        const data = await res.json();
+        triggersDisclaimerEl.textContent = data.disclaimer || "";
+        triggersData = data.triggers || [];
+    } catch (err) {
+        triggersData = [];
+        triggersDisclaimerEl.textContent = "Kunde inte hämta triggers just nu.";
+    }
+    renderTriggersTimeline();
+}
+
+// Placerar varje händelse (sorterade efter datum) längs den horisontella
+// baslinjen, och tilldelar den en "våning" (lane) - den lägsta våning där
+// den inte hamnar för nära föregående etikett i samma våning - så att
+// etiketterna aldrig överlappar varandra oavsett hur tätt händelserna
+// ligger i tiden.
+function renderTriggersTimeline() {
+    const track = triggersTimelineTrackEl;
+    track.innerHTML = "";
+
+    const events = triggersData.slice(0, triggersCount).slice().sort((a, b) => a.date - b.date);
+    if (events.length === 0) {
+        track.style.width = "100%";
+        track.style.height = "80px";
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "Inga triggers att visa.";
+        track.appendChild(empty);
+        return;
+    }
+
+    const PX_PER_DAY = 55;
+    const LANE_HEIGHT = 245;
+    const MIN_GAP_PX = 185;
+    const SIDE_PADDING = 100;
+    const BASELINE_BOTTOM = 50;
+
+    const minDate = events[0].date;
+    const maxDate = events[events.length - 1].date;
+    const daySpan = Math.max(1, (maxDate - minDate) / 86400);
+    const trackWidth = Math.max(SIDE_PADDING * 2 + daySpan * PX_PER_DAY, triggersTimelineScrollEl.clientWidth);
+
+    function xFor(date) {
+        return SIDE_PADDING + ((date - minDate) / 86400) * PX_PER_DAY;
+    }
+
+    const laneLastX = [];
+    const placed = events.map((event) => {
+        const x = xFor(event.date);
+        let lane = 0;
+        while (laneLastX[lane] !== undefined && x - laneLastX[lane] < MIN_GAP_PX) {
+            lane++;
+        }
+        laneLastX[lane] = x;
+        return { event, x, lane };
+    });
+
+    const maxLane = Math.max(...placed.map((p) => p.lane));
+    const trackHeight = BASELINE_BOTTOM + (maxLane + 1) * LANE_HEIGHT + 30;
+
+    track.style.width = `${trackWidth}px`;
+    track.style.height = `${trackHeight}px`;
+
+    const baseline = document.createElement("div");
+    baseline.className = "timeline-baseline";
+    baseline.style.bottom = `${BASELINE_BOTTOM}px`;
+    track.appendChild(baseline);
+
+    // Månadsmarkeringar längs baslinjen, som referens för var på
+    // tidslinjen man befinner sig.
+    const firstMonth = new Date(minDate * 1000);
+    firstMonth.setUTCDate(1);
+    firstMonth.setUTCHours(0, 0, 0, 0);
+    for (let cursor = new Date(firstMonth); cursor.getTime() / 1000 <= maxDate + 86400 * 31; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
+        const monthTs = cursor.getTime() / 1000;
+        if (monthTs < minDate - 86400 * 31) continue;
+        const x = xFor(monthTs);
+
+        const tick = document.createElement("div");
+        tick.className = "timeline-month-tick";
+        tick.style.left = `${x}px`;
+        tick.style.bottom = `${BASELINE_BOTTOM}px`;
+        track.appendChild(tick);
+
+        const label = document.createElement("div");
+        label.className = "timeline-month-label";
+        label.style.left = `${x}px`;
+        label.style.bottom = `${BASELINE_BOTTOM - 22}px`;
+        label.textContent = cursor.toLocaleDateString("sv-SE", { month: "short", year: "numeric" });
+        track.appendChild(label);
+    }
+
+    placed.forEach(({ event, x, lane }) => {
+        const lineTop = BASELINE_BOTTOM + (lane + 1) * LANE_HEIGHT;
+
+        const line = document.createElement("div");
+        line.className = "timeline-event-line";
+        line.style.left = `${x}px`;
+        line.style.bottom = `${BASELINE_BOTTOM}px`;
+        line.style.height = `${lineTop - BASELINE_BOTTOM}px`;
+        track.appendChild(line);
+
+        const dot = document.createElement("div");
+        dot.className = "timeline-event-dot";
+        dot.style.left = `${x}px`;
+        dot.style.bottom = `${BASELINE_BOTTOM}px`;
+        track.appendChild(dot);
+
+        const label = document.createElement("div");
+        label.className = "timeline-event-label";
+        label.style.left = `${x}px`;
+        label.style.bottom = `${lineTop}px`;
+
+        const rankEl = document.createElement("span");
+        rankEl.className = "timeline-event-rank";
+        rankEl.textContent = `#${event.rank}`;
+        label.appendChild(rankEl);
+
+        const companyEl = document.createElement("span");
+        companyEl.className = "timeline-event-company";
+        companyEl.textContent = `${event.company} `;
+        const tickerEl = document.createElement("span");
+        tickerEl.className = "timeline-event-ticker";
+        tickerEl.textContent = event.ticker;
+        companyEl.appendChild(tickerEl);
+        label.appendChild(companyEl);
+
+        const dateEl = document.createElement("span");
+        dateEl.className = "timeline-event-date";
+        dateEl.textContent = formatAccountDate(event.date);
+        label.appendChild(dateEl);
+
+        const descEl = document.createElement("span");
+        descEl.className = "timeline-event-desc";
+        descEl.textContent = event.description;
+        label.appendChild(descEl);
+
+        track.appendChild(label);
+    });
+}
+
+function openTriggersTimeline() {
+    mainViewEl.classList.add("hidden");
+    scaleEditorEl.classList.add("hidden");
+    userProfileEl.classList.add("hidden");
+    chatRoomEl.classList.add("hidden");
+    triggersTimelineEl.classList.remove("hidden");
+    window.scrollTo(0, 0);
+    loadTriggers();
+}
+
+function closeTriggersTimeline() {
+    triggersTimelineEl.classList.add("hidden");
+    mainViewEl.classList.remove("hidden");
+}
+
+triggersLauncherBtn.addEventListener("click", openTriggersTimeline);
+triggersBackBtn.addEventListener("click", closeTriggersTimeline);
+
+triggersCountTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+        triggersCountTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        triggersCount = parseInt(tab.dataset.count, 10);
+        renderTriggersTimeline();
+    });
+});
+
 // --- Chattlänk i analysvyn - visas om en chatt är länkad till den
 // analyserade aktien. ---
 

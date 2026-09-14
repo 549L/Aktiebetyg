@@ -104,36 +104,44 @@
             </section>
         </div>
 
-        <section id="community-panel">
-            <div class="panel-header">
-                <h3>Community</h3>
-                <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Community">−</button>
-            </div>
-            <div class="panel-body">
-                <input type="text" id="community-search" placeholder="Sök chattar..." autocomplete="off">
-                <ul id="community-rooms-list"></ul>
-                <button type="button" id="create-room-btn">+ Skapa ny chatt</button>
-
-                <div id="create-room-form" class="hidden">
-                    <label class="editor-field">
-                        Namn på chatten
-                        <input type="text" id="new-room-name" placeholder="T.ex. Teknikaktier" maxlength="60">
-                    </label>
-                    <label class="editor-field">
-                        Länka till en aktie (valfritt)
-                        <div class="input-wrapper">
-                            <input type="text" id="new-room-ticker" placeholder="T.ex. VOLV-B.ST" autocomplete="off">
-                            <ul id="new-room-ticker-suggestions" class="suggestions hidden"></ul>
-                        </div>
-                    </label>
-                    <div class="create-room-actions">
-                        <button type="button" id="save-room-btn">Skapa</button>
-                        <button type="button" id="cancel-room-btn" class="login-toggle-btn">Avbryt</button>
-                    </div>
-                    <span id="create-room-error" class="editor-error hidden"></span>
+        <div class="side-panels">
+            <section id="community-panel">
+                <div class="panel-header">
+                    <h3>Community</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Community">−</button>
                 </div>
-            </div>
-        </section>
+                <div class="panel-body">
+                    <input type="text" id="community-search" placeholder="Sök chattar..." autocomplete="off">
+                    <ul id="community-rooms-list"></ul>
+                    <button type="button" id="create-room-btn">+ Skapa ny chatt</button>
+
+                    <div id="create-room-form" class="hidden">
+                        <label class="editor-field">
+                            Namn på chatten
+                            <input type="text" id="new-room-name" placeholder="T.ex. Teknikaktier" maxlength="60">
+                        </label>
+                        <label class="editor-field">
+                            Länka till en aktie (valfritt)
+                            <div class="input-wrapper">
+                                <input type="text" id="new-room-ticker" placeholder="T.ex. VOLV-B.ST" autocomplete="off">
+                                <ul id="new-room-ticker-suggestions" class="suggestions hidden"></ul>
+                            </div>
+                        </label>
+                        <div class="create-room-actions">
+                            <button type="button" id="save-room-btn">Skapa</button>
+                            <button type="button" id="cancel-room-btn" class="login-toggle-btn">Avbryt</button>
+                        </div>
+                        <span id="create-room-error" class="editor-error hidden"></span>
+                    </div>
+                </div>
+            </section>
+
+            <button type="button" id="triggers-launcher" class="triggers-launcher">
+                <h3>📈 Triggers tidslinjen</h3>
+                <p class="muted">De 50 största potentiella framtida triggers vi hittat för börsbolag, rankade och utlagda på en tidslinje.</p>
+                <span class="triggers-launcher-cta">Öppna tidslinjen →</span>
+            </button>
+        </div>
 
         <div id="status"></div>
 
@@ -293,6 +301,25 @@
                 <button type="submit">Skicka</button>
             </form>
             <span id="chat-room-error" class="editor-error hidden"></span>
+        </section>
+
+        <section id="triggers-timeline" class="hidden">
+            <button type="button" id="triggers-back" class="editor-back-btn">← Tillbaka</button>
+
+            <div class="triggers-timeline-header">
+                <h2>Triggers tidslinjen</h2>
+                <div class="triggers-count-tabs" role="tablist">
+                    <button type="button" class="triggers-count-tab" data-count="10">Topp 10</button>
+                    <button type="button" class="triggers-count-tab" data-count="25">Topp 25</button>
+                    <button type="button" class="triggers-count-tab active" data-count="50">Topp 50</button>
+                </div>
+            </div>
+
+            <p id="triggers-disclaimer" class="triggers-disclaimer"></p>
+
+            <div id="triggers-timeline-scroll" class="triggers-timeline-scroll">
+                <div id="triggers-timeline-track" class="triggers-timeline-track"></div>
+            </div>
         </section>
         </div>
     </main>
