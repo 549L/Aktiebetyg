@@ -1881,6 +1881,21 @@ const chatRoomForm = document.getElementById("chat-room-form");
 const chatRoomInput = document.getElementById("chat-room-input");
 const chatRoomErrorEl = document.getElementById("chat-room-error");
 
+// Ger varje användarnamn en egen, stabil färg (samma namn -> samma färg
+// varje gång, ingen lagring behövs) så man snabbt kan skilja vem som
+// skrivit vad i en chatt med flera deltagare - istället för att alla
+// namn visades i samma (tidigare: --accent, alltså läsarens egen
+// accentfärg efter förra ändringen) enda färg.
+function usernameColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = (hash << 5) - hash + username.charCodeAt(i);
+        hash |= 0;
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 65%)`;
+}
+
 function renderChatMessages(container, emptyEl, messages) {
     container.innerHTML = "";
     if (messages.length === 0) {
@@ -1899,6 +1914,7 @@ function renderChatMessages(container, emptyEl, messages) {
         const userSpan = document.createElement("span");
         userSpan.className = "community-message-user";
         userSpan.textContent = msg.username;
+        userSpan.style.color = usernameColor(msg.username);
         userSpan.addEventListener("click", () => openUserProfile(msg.username));
         head.appendChild(userSpan);
 
