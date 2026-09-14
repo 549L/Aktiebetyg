@@ -1727,6 +1727,13 @@ accountUsernameEl.addEventListener("click", goToOwnProfile);
 
 let communityRooms = [];
 let communitySearchQuery = "";
+// Tickrar (t.ex. "AAPL") vars bolagsnamn matchar den senaste sökningen -
+// slås upp asynkront via /api/search (samma endpoint som ticker-
+// autocompleten) så man kan söka på "Apple" och hitta chattar länkade
+// till AAPL, inte bara chattar som råkar heta "Apple" i sitt eget namn.
+let communitySearchTickerMatches = new Set();
+let communitySearchDebounce = null;
+let communitySearchAbort = null;
 let currentRoomId = null;
 
 const communitySearchInput = document.getElementById("community-search");
@@ -1765,7 +1772,13 @@ async function loadCommunityRooms() {
 function renderCommunityRoomsList() {
     communityRoomsListEl.innerHTML = "";
     const q = communitySearchQuery.trim().toLowerCase();
-    const rooms = q ? communityRooms.filter((r) => r.name.toLowerCase().includes(q)) : communityRooms;
+    const rooms = q
+        ? communityRooms.filter((r) =>
+            r.name.toLowerCase().includes(q) ||
+            (r.ticker && r.ticker.toLowerCase().includes(q)) ||
+            (r.ticker && communitySearchTickerMatches.has(r.ticker))
+        )
+        : communityRooms;
 
     if (rooms.length === 0) {
         const li = document.createElement("li");
@@ -1808,6 +1821,28 @@ function renderCommunityRoomsList() {
 communitySearchInput.addEventListener("input", () => {
     communitySearchQuery = communitySearchInput.value;
     renderCommunityRoomsList();
+
+    clearTimeout(communitySearchDebounce);
+    const query = communitySearchQuery.trim();
+    if (query.length < 2) {
+        communitySearchTickerMatches = new Set();
+        return;
+    }
+
+    communitySearchDebounce = setTimeout(async () => {
+        if (communitySearchAbort) communitySearchAbort.abort();
+        communitySearchAbort = new AbortController();
+        try {
+            const res = await fetch(`/api/search/${encodeURIComponent(query)}`, {
+                signal: communitySearchAbort.signal,
+            });
+            const matches = await res.json();
+            communitySearchTickerMatches = new Set(matches.map((m) => m.symbol));
+            renderCommunityRoomsList();
+        } catch (err) {
+            if (err.name !== "AbortError") communitySearchTickerMatches = new Set();
+        }
+    }, 250);
 });
 
 createRoomBtn.addEventListener("click", () => {

@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, session, url_for
 
 import community_store
 import ratings_store
@@ -42,18 +42,39 @@ def _cache_control(response):
     # att man loggat in som någon annan i samma flik.
     #
     # /static/* (app.js/style.css/favicon.svg) är däremot samma för alla
-    # och ändras bara vid en omdeploy - de fick tidigare också no-store av
-    # misstag, vilket tvingade webbläsaren att hämta om hela app.js (~90 kB)
-    # och style.css (~35 kB) på nytt vid VARJE sidladdning. En måttlig
-    # max-age (webbläsaren slipper fråga servern alls under den tiden) +
-    # Flasks inbyggda ETag som fallback (en snabb 304 istället för att
-    # hämta om hela filen om cachen redan gått ut) ger snabbare sidladdning
-    # utan att riskera långvarigt inaktuell JS/CSS efter en omdeploy.
+    # och fick tidigare också no-store av misstag, vilket tvingade
+    # webbläsaren att hämta om hela app.js (~90 kB) och style.css (~35 kB)
+    # på nytt vid VARJE sidladdning. index.html länkar till dem med en
+    # "?v=<filens ändringstidpunkt>"-parameter (se asset_url ovan) - byter
+    # alltså URL automatiskt så fort filen verkligen ändras (t.ex. vid en
+    # omdeploy) - så de kan cachas i väldigt lång tid (immutable, ett år)
+    # helt utan risk för inaktuell JS/CSS: en gammal sidvisning fortsätter
+    # peka på den gamla (fortfarande cachade) URL:en, en ny sidvisning får
+    # den nya URL:en och hämtar filen på nytt.
     if request.endpoint == "static":
-        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     else:
         response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@app.context_processor
+def _inject_asset_version():
+    # Lägger till "?v=<filens ändringstidpunkt>" på statiska filers URL:er
+    # i index.html (se asset_url nedan) - byter URL varje gång filen
+    # verkligen ändras (t.ex. vid en omdeploy), så webbläsaren aldrig kan
+    # visa en gammal cachad app.js/style.css av misstag. Det gör att de
+    # kan cachas väldigt länge (se /static/*-fallet i _cache_control) utan
+    # att riskera inaktuell JS/CSS efter en omdeploy.
+    def asset_url(filename):
+        path = os.path.join(app.static_folder, filename)
+        try:
+            version = int(os.path.getmtime(path))
+        except OSError:
+            version = 0
+        return f"{url_for('static', filename=filename)}?v={version}"
+
+    return {"asset_url": asset_url}
 
 
 @app.route("/")
