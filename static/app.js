@@ -2218,11 +2218,11 @@ function renderTriggersTimeline() {
         return;
     }
 
-    const PX_PER_DAY = 60;
-    const LANE_HEIGHT = 180;
-    const MIN_GAP_PX = 270;
-    const SIDE_PADDING = 130;
-    const BASELINE_MARGIN = 20;
+    const PX_PER_DAY = 110;
+    const LANE_HEIGHT = 125;
+    const MIN_GAP_PX = 165;
+    const SIDE_PADDING = 90;
+    const BASELINE_MARGIN = 16;
 
     const minDate = events[0].date;
     const maxDate = events[events.length - 1].date;
@@ -2348,14 +2348,13 @@ function renderTriggersTimeline() {
             dateEl.textContent = formatAccountDate(event.date);
             label.appendChild(dateEl);
 
-            const descEl = document.createElement("span");
-            descEl.className = "timeline-event-desc";
-            descEl.textContent = event.description;
-            label.appendChild(descEl);
-
             // Ungefärlig, historiskt grundad bedömning av hur mycket
             // aktien skulle kunna röra sig procentuellt beroende på om
             // utfallet blir positivt eller negativt - se disclaimern.
+            // Själva förklaringen av triggern och de möjliga utfallen
+            // syns bara i detaljvyn (se openTriggerDetail) - rutan här
+            // ska hållas liten så alla får plats utan att man behöver
+            // scrolla vertikalt.
             const impactEl = document.createElement("span");
             impactEl.className = "timeline-event-impact";
             const downEl = document.createElement("span");
@@ -2368,6 +2367,8 @@ function renderTriggersTimeline() {
             impactEl.appendChild(upEl);
             label.appendChild(impactEl);
 
+            label.addEventListener("click", () => openTriggerDetail(event));
+
             track.appendChild(label);
         });
     }
@@ -2378,6 +2379,38 @@ function renderTriggersTimeline() {
     triggersTimelineScrollEl.scrollLeft = 0;
     updateTimelineScrubber();
 }
+
+// Detaljvy för en enskild trigger - öppnas när man klickar på dess ruta
+// på tidslinjen. Visar den fullständiga förklaringen samt vad ett
+// positivt/negativt utfall skulle innebära och den ungefärliga
+// kurspåverkan för var av dem, istället för att trycka in allt i den
+// lilla rutan på själva tidslinjen.
+const triggerDetailOverlayEl = document.getElementById("trigger-detail-overlay");
+const triggerDetailCloseBtn = document.getElementById("trigger-detail-close");
+
+function openTriggerDetail(event) {
+    document.getElementById("trigger-detail-rank").textContent = `#${event.rank}`;
+    document.getElementById("trigger-detail-company").textContent = `${event.company} (${event.ticker})`;
+    document.getElementById("trigger-detail-date").textContent = formatAccountDate(event.date);
+    document.getElementById("trigger-detail-description").textContent = event.description;
+    document.getElementById("trigger-detail-impact-up").textContent = `+${event.impact_up}%`;
+    document.getElementById("trigger-detail-outcome-up").textContent = event.outcome_up;
+    document.getElementById("trigger-detail-impact-down").textContent = `−${event.impact_down}%`;
+    document.getElementById("trigger-detail-outcome-down").textContent = event.outcome_down;
+    triggerDetailOverlayEl.classList.remove("hidden");
+}
+
+function closeTriggerDetail() {
+    triggerDetailOverlayEl.classList.add("hidden");
+}
+
+triggerDetailCloseBtn.addEventListener("click", closeTriggerDetail);
+triggerDetailOverlayEl.addEventListener("click", (e) => {
+    if (e.target === triggerDetailOverlayEl) closeTriggerDetail();
+});
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !triggerDetailOverlayEl.classList.contains("hidden")) closeTriggerDetail();
+});
 
 function openTriggersTimeline() {
     mainViewEl.classList.add("hidden");

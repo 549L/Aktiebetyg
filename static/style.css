@@ -1411,18 +1411,25 @@ input[type="range"].weight-slider::-moz-range-thumb {
 
 .timeline-event-label {
     position: absolute;
-    width: 250px;
+    width: 148px;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     gap: 3px;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-radius: 10px;
     background: var(--bg);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
-    font-size: 0.75rem;
-    line-height: 1.3;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.timeline-event-label:hover {
+    border-color: var(--accent);
+    transform: translateX(-50%) translateY(-2px);
 }
 
 .timeline-event-rank {
@@ -1450,10 +1457,6 @@ input[type="range"].weight-slider::-moz-range-thumb {
     font-weight: 600;
 }
 
-.timeline-event-desc {
-    color: var(--muted);
-}
-
 .timeline-event-impact {
     display: flex;
     gap: 10px;
@@ -1469,6 +1472,116 @@ input[type="range"].weight-slider::-moz-range-thumb {
 
 .timeline-event-impact-up {
     color: var(--green);
+}
+
+/* --- Detaljvy för en trigger (öppnas när man klickar på en ruta) --- */
+
+.trigger-detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+}
+
+.trigger-detail-card {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px 24px 24px;
+    box-shadow: var(--shadow-card);
+}
+
+.trigger-detail-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.trigger-detail-close:hover {
+    color: var(--text);
+    border-color: var(--muted);
+    filter: none;
+}
+
+#trigger-detail-company {
+    margin: 10px 0 2px;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--text);
+    font-size: 1.1rem;
+}
+
+.trigger-detail-date {
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+}
+
+.trigger-detail-description {
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0 0 18px;
+    font-size: 0.9rem;
+}
+
+.trigger-outcome {
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+}
+
+.trigger-outcome:last-child {
+    margin-bottom: 0;
+}
+
+.trigger-outcome-up {
+    background: color-mix(in srgb, var(--green) 8%, var(--bg));
+}
+
+.trigger-outcome-down {
+    background: color-mix(in srgb, var(--red) 8%, var(--bg));
+}
+
+.trigger-outcome-head {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.trigger-outcome-up .trigger-outcome-head {
+    color: var(--green);
+}
+
+.trigger-outcome-down .trigger-outcome-head {
+    color: var(--red);
+}
+
+.trigger-outcome p {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.88rem;
+    line-height: 1.45;
 }
 
 #result-chat-link {
