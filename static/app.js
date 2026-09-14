@@ -2007,16 +2007,46 @@ chatRoomForm.addEventListener("submit", async (e) => {
 
 const resultChatLinkEl = document.getElementById("result-chat-link");
 const resultChatTickerLabelEl = document.getElementById("result-chat-ticker-label");
-const resultChatNameEl = document.getElementById("result-chat-name");
-const resultChatPreviewEl = document.getElementById("result-chat-preview");
-const resultChatOpenBtn = document.getElementById("result-chat-open-btn");
-let resultChatRoomId = null;
+const resultChatRoomsEl = document.getElementById("result-chat-rooms");
 let resultChatRequestId = 0;
+
+// Bygger en egen liten "chattkort"-sektion per rum länkat till aktien -
+// namn, en förhandsvisning av de senaste meddelandena och en egen
+// "Öppna chatt"-knapp, så flera chattar om samma aktie kan visas sida
+// vid sida istället för att bara den första hittade chatten syntes.
+function buildResultChatRoom(room) {
+    const wrap = document.createElement("div");
+    wrap.className = "result-chat-room";
+
+    const name = document.createElement("p");
+    name.className = "result-chat-room-name";
+    name.textContent = room.name;
+    wrap.appendChild(name);
+
+    const preview = document.createElement("ul");
+    preview.className = "result-chat-preview";
+    renderChatMessages(preview, null, room.messages.slice(-3));
+    if (room.messages.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "Inga meddelanden än — bli först med att skriva något!";
+        preview.appendChild(li);
+    }
+    wrap.appendChild(preview);
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.textContent = "Öppna chatt";
+    openBtn.addEventListener("click", () => openChatRoom(room.id));
+    wrap.appendChild(openBtn);
+
+    return wrap;
+}
 
 async function checkResultChat(ticker) {
     const requestId = ++resultChatRequestId;
     resultChatLinkEl.classList.add("hidden");
-    resultChatRoomId = null;
+    resultChatRoomsEl.innerHTML = "";
     if (!ticker) return;
 
     try {
@@ -2024,32 +2054,21 @@ async function checkResultChat(ticker) {
         const rooms = await res.json();
         if (requestId !== resultChatRequestId) return;
         if (!rooms.length) return;
-        const room = rooms[0];
 
-        const fullRes = await fetch(`/api/community/rooms/${room.id}`);
-        const fullRoom = await fullRes.json();
+        const fullRooms = await Promise.all(
+            rooms.map((room) => fetch(`/api/community/rooms/${room.id}`).then((r) => r.json()))
+        );
         if (requestId !== resultChatRequestId) return;
 
-        resultChatRoomId = room.id;
         resultChatTickerLabelEl.textContent = ticker;
-        resultChatNameEl.textContent = room.name;
-        renderChatMessages(resultChatPreviewEl, null, fullRoom.messages.slice(-3));
-        if (fullRoom.messages.length === 0) {
-            const li = document.createElement("li");
-            li.className = "muted";
-            li.textContent = "Inga meddelanden än — bli först med att skriva något!";
-            resultChatPreviewEl.appendChild(li);
-        }
+        resultChatRoomsEl.innerHTML = "";
+        fullRooms.forEach((room) => resultChatRoomsEl.appendChild(buildResultChatRoom(room)));
 
         resultChatLinkEl.classList.remove("hidden");
     } catch (err) {
         // Chattlänken är en extra funktion - misslyckas den visas den bara inte.
     }
 }
-
-resultChatOpenBtn.addEventListener("click", () => {
-    if (resultChatRoomId) openChatRoom(resultChatRoomId);
-});
 
 let communityPollTimer = null;
 

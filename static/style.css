@@ -1140,7 +1140,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     gap: 10px;
 }
 
-#chat-room-messages, #result-chat-preview {
+#chat-room-messages, .result-chat-preview {
     list-style: none;
     margin: 0 0 14px;
     padding: 0;
@@ -1151,7 +1151,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     gap: 10px;
 }
 
-#result-chat-preview {
+.result-chat-preview {
     max-height: 240px;
 }
 
@@ -1228,9 +1228,28 @@ input[type="range"].weight-slider::-moz-range-thumb {
     color: var(--text);
 }
 
-#result-chat-name {
+#result-chat-rooms {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.result-chat-room {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.result-chat-room-name {
     margin: 0 0 10px;
     color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.result-chat-room button {
+    padding: 8px 16px;
     font-size: 0.85rem;
 }
 
@@ -1677,7 +1696,7 @@ ul li:last-child {
    inte scrollbeteendet. */
 .suggestions,
 #chat-room-messages,
-#result-chat-preview,
+.result-chat-preview,
 .metric-picker ul,
 .table-scroll {
     scrollbar-width: thin;
@@ -1686,7 +1705,7 @@ ul li:last-child {
 
 .suggestions::-webkit-scrollbar,
 #chat-room-messages::-webkit-scrollbar,
-#result-chat-preview::-webkit-scrollbar,
+.result-chat-preview::-webkit-scrollbar,
 .metric-picker ul::-webkit-scrollbar,
 .table-scroll::-webkit-scrollbar {
     width: 8px;
@@ -1695,7 +1714,7 @@ ul li:last-child {
 
 .suggestions::-webkit-scrollbar-track,
 #chat-room-messages::-webkit-scrollbar-track,
-#result-chat-preview::-webkit-scrollbar-track,
+.result-chat-preview::-webkit-scrollbar-track,
 .metric-picker ul::-webkit-scrollbar-track,
 .table-scroll::-webkit-scrollbar-track {
     background: transparent;
@@ -1703,7 +1722,7 @@ ul li:last-child {
 
 .suggestions::-webkit-scrollbar-thumb,
 #chat-room-messages::-webkit-scrollbar-thumb,
-#result-chat-preview::-webkit-scrollbar-thumb,
+.result-chat-preview::-webkit-scrollbar-thumb,
 .metric-picker ul::-webkit-scrollbar-thumb,
 .table-scroll::-webkit-scrollbar-thumb {
     background: var(--border);
@@ -1712,7 +1731,7 @@ ul li:last-child {
 
 .suggestions::-webkit-scrollbar-thumb:hover,
 #chat-room-messages::-webkit-scrollbar-thumb:hover,
-#result-chat-preview::-webkit-scrollbar-thumb:hover,
+.result-chat-preview::-webkit-scrollbar-thumb:hover,
 .metric-picker ul::-webkit-scrollbar-thumb:hover,
 .table-scroll::-webkit-scrollbar-thumb:hover {
     background: var(--muted);
