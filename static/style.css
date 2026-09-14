@@ -1614,6 +1614,52 @@ section.panel-collapsed .panel-body {
     .columns { grid-template-columns: 1fr; }
 }
 
+.upcoming-events-card {
+    margin-bottom: 24px;
+}
+
+.upcoming-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upcoming-events-list li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: none;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.upcoming-event-label {
+    color: var(--text);
+}
+
+.upcoming-event-date {
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* På mobilen är raden ofta för trång för att både etiketten (som kan slå
+   om till två rader, t.ex. "Räkenskapsårets slut") och datumet ska rymmas
+   snyggt sida vid sida - datumet hamnade då mitt i etikettens radbrytning.
+   Staplar dem istället under varandra när det är trångt. */
+@media (max-width: 600px) {
+    .upcoming-events-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+}
+
 h3 {
     margin: 0 0 10px;
     font-size: 1rem;

@@ -28,7 +28,7 @@ from ttl_cache import ttl_cache
 # (ingen miljövariabel satt) går anropen direkt, precis som innan.
 _PROXY_URL = os.environ.get("DATAIMPULSE_PROXY")
 
-_MODULES = "defaultKeyStatistics,financialData,summaryDetail,price,assetProfile"
+_MODULES = "defaultKeyStatistics,financialData,summaryDetail,price,assetProfile,calendarEvents"
 
 # Yahoos chart-API tar "range" + "interval"-koder direkt, men de är kryptiska
 # (t.ex. "5d"/"15m"). Vi mappar egna, tydliga tidsperiod-namn mot dem här -
@@ -250,6 +250,15 @@ def get_info(ticker: str) -> dict:
         if isinstance(module, dict):
             for key, value in module.items():
                 flat[key] = _unwrap(value)
+
+    # calendarEvents.earnings är ett nästlat objekt ({"earningsDate": [...]})
+    # istället för en enkel {"raw","fmt"}-post - generella loopen ovan
+    # skulle annars skriva över "earnings" med None (_unwrap hittar ingen
+    # "raw"-nyckel på det nästlade objektet). Plockar ut listan med
+    # kommande/uppskattade rapportdatum separat.
+    calendar = modules.get("calendarEvents") or {}
+    earnings_dates = (calendar.get("earnings") or {}).get("earningsDate") or []
+    flat["earningsDate"] = [_unwrap(d) for d in earnings_dates if isinstance(d, dict)]
 
     return flat
 

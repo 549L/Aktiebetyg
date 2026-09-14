@@ -52,6 +52,45 @@ function renderFearGreed(fearGreed) {
     badge.classList.remove("hidden");
 }
 
+// Nästa rapport (liten ruta, alltid synlig) + "Kommande händelser" (upp
+// till tre - rapportdatum, X-dag/utdelning, räkenskapsårets slut) visas
+// för ALLA bolag oavsett vald betygsskala, se scoring.py:s
+// _upcoming_events. "Okänt"/en tom-lista-text istället för att dölja
+// rutan/sektionen om inget hittades - de ska alltid synas på samma ställe.
+function renderUpcomingEvents(data) {
+    document.getElementById("next-report-value").textContent = data.next_report_date
+        ? formatAccountDate(data.next_report_date)
+        : "Okänt";
+
+    const listEl = document.getElementById("upcoming-events-list");
+    listEl.innerHTML = "";
+    const events = data.upcoming_events || [];
+
+    if (events.length === 0) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "Inga kända kommande händelser hittades.";
+        listEl.appendChild(li);
+        return;
+    }
+
+    events.forEach((event) => {
+        const li = document.createElement("li");
+
+        const label = document.createElement("span");
+        label.className = "upcoming-event-label";
+        label.textContent = event.label;
+        li.appendChild(label);
+
+        const date = document.createElement("span");
+        date.className = "upcoming-event-date";
+        date.textContent = formatAccountDate(event.date);
+        li.appendChild(date);
+
+        listEl.appendChild(li);
+    });
+}
+
 // Ticker-autocomplete - återanvänds både av huvudsökrutan (väljer man ett
 // förslag analyseras aktien direkt) och av "länka till en aktie"-fältet när
 // man skapar en community-chatt (väljer man ett förslag fylls bara fältet i).
@@ -252,6 +291,7 @@ function renderResult(data) {
         ? (viewLabel ? `(${data.scale} · ${viewLabel})` : `(${data.scale})`)
         : "";
     renderFearGreed(data.fear_greed);
+    renderUpcomingEvents(data);
 
     const scoreValue = document.getElementById("score-value");
     const scoreBadge = document.getElementById("score-badge");

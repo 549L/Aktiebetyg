@@ -9,6 +9,7 @@ nyckeltal i config/metrics.py.
 import concurrent.futures
 import math
 import re
+import time
 
 from yahoo_client import get_info, search_symbols
 from config.metrics import PROFILES, METRIC_STYLE
@@ -262,6 +263,45 @@ def _computed_fields(info, fear_greed, ma200):
     return computed
 
 
+# Vilka Yahoo-fält som räknas som en "framtida händelse" och vad de ska
+# kallas i gränssnittet - samma tre finns (i olika mån) för nästan alla
+# bolag: nästa rapport, utdelning (om bolaget delar ut) och räkenskaps-
+# årets slut. Yahoos fria API ger ingen bolagsspecifik "trigger"-kalender
+# (produktlanseringar, myndighetsbeslut o.dyl.) - det kräver en betald
+# datakälla - så det här är vad som faktiskt går att visa pålitligt för
+# ALLA bolag oavsett bransch.
+def _upcoming_events(info: dict) -> list:
+    """Bygger en lista med kommande, verkliga datumhändelser för bolaget
+    (rapportdatum, X-dag/utdelning, räkenskapsårets slut) - bara sådana
+    som faktiskt ligger i framtiden, sorterade med det närmaste först."""
+    now = time.time()
+    candidates = []
+
+    # Yahoo ger ofta en uppskattad DATUMSPANN (två datum) istället för ett
+    # exakt rapportdatum så länge det inte är bekräftat - använder bara det
+    # första (tidigaste) av dem, annars skulle "Nästa kvartalsrapport"
+    # kunna dyka upp två gånger i listan med olika datum.
+    earnings_dates = [d for d in (info.get("earningsDate") or []) if d]
+    if earnings_dates:
+        candidates.append({"label": "Nästa kvartalsrapport", "date": min(earnings_dates)})
+
+    ex_dividend = info.get("exDividendDate")
+    if ex_dividend:
+        candidates.append({"label": "X-dag för utdelning (aktien handlas exklusive utdelning)", "date": ex_dividend})
+
+    dividend_date = info.get("dividendDate")
+    if dividend_date:
+        candidates.append({"label": "Utdelning betalas ut", "date": dividend_date})
+
+    fiscal_year_end = info.get("nextFiscalYearEnd")
+    if fiscal_year_end:
+        candidates.append({"label": "Räkenskapsårets slut", "date": fiscal_year_end})
+
+    future = [c for c in candidates if c["date"] > now]
+    future.sort(key=lambda c: c["date"])
+    return future
+
+
 def analyze_ticker(ticker: str, view_style: str = None, custom_scale_profiles: dict = None):
     ticker = ticker.strip().upper()
     resolved_ticker = ticker
@@ -353,6 +393,13 @@ def analyze_ticker(ticker: str, view_style: str = None, custom_scale_profiles: d
     def fmt(point, template_key):
         return point[template_key].format(value=point["display_value"], ideal=point.get("ideal"))
 
+    # Kommande händelser (rapportdatum, utdelning, räkenskapsårets slut) -
+    # oberoende av vald betygsskala, samma för alla bolag och alla lägen.
+    upcoming_events = _upcoming_events(info)
+    next_report_date = next(
+        (e["date"] for e in upcoming_events if e["label"] == "Nästa kvartalsrapport"), None
+    )
+
     return {
         "ticker": resolved_ticker,
         "name": info.get("longName") or info.get("shortName") or resolved_ticker,
@@ -366,6 +413,8 @@ def analyze_ticker(ticker: str, view_style: str = None, custom_scale_profiles: d
         "view_style_label": _VIEW_LABELS.get(view_style),
         "fear_greed": fear_greed,
         "chart": chart,
+        "next_report_date": next_report_date,
+        "upcoming_events": upcoming_events[:3],
         "score": round(overall_score) if overall_score is not None else None,
         "metrics": [
             {
