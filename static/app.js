@@ -2248,10 +2248,21 @@ function renderTriggersTimeline() {
     const maxUpLane = upPlaced.length ? Math.max(...upPlaced.map((p) => p.lane)) : -1;
     const maxDownLane = downPlaced.length ? Math.max(...downPlaced.map((p) => p.lane)) : -1;
 
-    const upSpace = BASELINE_MARGIN + (maxUpLane + 1) * LANE_HEIGHT;
-    const downSpace = BASELINE_MARGIN + (maxDownLane + 1) * LANE_HEIGHT;
-    const trackHeight = upSpace + downSpace + 40;
-    const baselineY = upSpace + 20; // avstånd från trackens topp ner till baslinjen
+    // EDGE_CLEARANCE måste rymma en hel ruta (~110px hög) plus liten
+    // marginal - annars stack den yttersta våningens ruta (den som ligger
+    // längst bort från baslinjen, t.ex. Intel/Amazon om de hamnar där) ut
+    // ovanför/under själva spårets kant. Den delen av rutan fick då ingen
+    // plats i dokumentets scrollhöjd alls, så den gick inte att nå genom
+    // att skrolla - bara halva rutan syntes, resten var permanent
+    // avklippt. (BASELINE_MARGIN används fortfarande nedan i
+    // linje/etikett-formlerna, men tar där ut sig självt - det är bara
+    // här, i hur mycket totalt utrymme som reserveras, som det faktiskt
+    // spelade roll.)
+    const EDGE_CLEARANCE = 130;
+    const upSpace = (maxUpLane + 1) * LANE_HEIGHT + EDGE_CLEARANCE;
+    const downSpace = (maxDownLane + 1) * LANE_HEIGHT + EDGE_CLEARANCE;
+    const trackHeight = upSpace + downSpace;
+    const baselineY = upSpace; // avstånd från trackens topp ner till baslinjen
 
     track.style.width = `${trackWidth}px`;
     track.style.height = `${trackHeight}px`;
