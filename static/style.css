@@ -1296,17 +1296,73 @@ input[type="range"].weight-slider::-moz-range-thumb {
     line-height: 1.5;
 }
 
+.triggers-timeline-wrap {
+    position: relative;
+}
+
 .triggers-timeline-scroll {
     /* Bara horisontellt scroll ska hanteras här - vertikalt ska sidan
        scrolla precis som resten av innehållet (overflow-y:hidden här
        riskerade att klippa bort händelser om höjden någonsin blev
-       begränsad av en förfader, så det ska inte finnas alls). */
+       begränsad av en förfader, så det ska inte finnas alls). Den
+       inbyggda scrollbaren döljs - se .timeline-scrubber, som ersätter
+       den med ett eget draghandtag mitt i tidslinjen istället för längst
+       ner i rutan. */
     overflow-x: auto;
-    padding: 10px 4px 20px;
+    padding: 10px 4px 4px;
+    scrollbar-width: none;
+}
+
+.triggers-timeline-scroll::-webkit-scrollbar {
+    display: none;
 }
 
 .triggers-timeline-track {
     position: relative;
+}
+
+/* Eget draghandtag för att scrolla tidslinjen sida till sida - ersätter
+   webbläsarens vanliga scrollbar (som annars hamnar längst ner i rutan,
+   långt från själva tidslinjen) med en som ligger mitt i, i höjd med
+   baslinjen. Ligger UTANFÖR .triggers-timeline-scroll så den aldrig
+   scrollar bort med innehållet - bara handtaget rör sig, styrt av
+   updateTimelineScrubber() i app.js. */
+.timeline-scrubber {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    right: 16px;
+    transform: translateY(-50%);
+    z-index: 5;
+    pointer-events: none;
+}
+
+.timeline-scrubber-track {
+    position: relative;
+    height: 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 75%, transparent);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(2px);
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.timeline-scrubber-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    min-width: 30px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+    touch-action: none;
+}
+
+.timeline-scrubber-thumb:active {
+    cursor: grabbing;
 }
 
 .timeline-baseline {
@@ -1355,18 +1411,18 @@ input[type="range"].weight-slider::-moz-range-thumb {
 
 .timeline-event-label {
     position: absolute;
-    width: 170px;
+    width: 250px;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 10px 12px;
+    gap: 3px;
+    padding: 8px 12px;
     border-radius: 10px;
     background: var(--bg);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
     font-size: 0.75rem;
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
 .timeline-event-rank {

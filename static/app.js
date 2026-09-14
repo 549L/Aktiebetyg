@@ -2092,9 +2092,94 @@ const triggersDisclaimerEl = document.getElementById("triggers-disclaimer");
 const triggersTimelineScrollEl = document.getElementById("triggers-timeline-scroll");
 const triggersTimelineTrackEl = document.getElementById("triggers-timeline-track");
 const triggersCountTabs = document.querySelectorAll(".triggers-count-tab");
+const timelineScrubberTrackEl = document.getElementById("timeline-scrubber-track");
+const timelineScrubberThumbEl = document.getElementById("timeline-scrubber-thumb");
 
 let triggersData = [];
 let triggersCount = 20;
+
+// Eget draghandtag istället för webbläsarens vanliga (bottenplacerade)
+// scrollbar - samma idé (dra för att scrolla sida till sida, handtagets
+// bredd/position speglar hur stor del av tidslinjen som syns), bara
+// flyttat till mitten av rutan och egen-stilat. thumb-bredden/positionen
+// räknas om varje gång man scrollar (native scroll, t.ex. via styrplatta)
+// och varje gång man drar handtaget själv.
+function updateTimelineScrubber() {
+    const trackWidth = timelineScrubberTrackEl.clientWidth;
+    const contentWidth = triggersTimelineScrollEl.scrollWidth;
+    const visibleWidth = triggersTimelineScrollEl.clientWidth;
+
+    if (contentWidth <= visibleWidth || trackWidth === 0) {
+        timelineScrubberThumbEl.style.width = "100%";
+        timelineScrubberThumbEl.style.left = "0px";
+        return;
+    }
+
+    const thumbWidth = Math.max(30, (visibleWidth / contentWidth) * trackWidth);
+    const maxScrollLeft = contentWidth - visibleWidth;
+    const maxThumbLeft = trackWidth - thumbWidth;
+    const thumbLeft = maxScrollLeft > 0 ? (triggersTimelineScrollEl.scrollLeft / maxScrollLeft) * maxThumbLeft : 0;
+
+    timelineScrubberThumbEl.style.width = `${thumbWidth}px`;
+    timelineScrubberThumbEl.style.left = `${thumbLeft}px`;
+}
+
+function scrollTimelineTo(ratio) {
+    const contentWidth = triggersTimelineScrollEl.scrollWidth;
+    const visibleWidth = triggersTimelineScrollEl.clientWidth;
+    const maxScrollLeft = Math.max(0, contentWidth - visibleWidth);
+    triggersTimelineScrollEl.scrollLeft = Math.min(Math.max(ratio, 0), 1) * maxScrollLeft;
+}
+
+triggersTimelineScrollEl.addEventListener("scroll", updateTimelineScrubber);
+window.addEventListener("resize", updateTimelineScrubber);
+
+let scrubberDrag = null;
+
+timelineScrubberThumbEl.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    scrubberDrag = { startX: e.clientX, startScrollLeft: triggersTimelineScrollEl.scrollLeft };
+    timelineScrubberThumbEl.setPointerCapture(e.pointerId);
+});
+
+timelineScrubberThumbEl.addEventListener("pointermove", (e) => {
+    if (!scrubberDrag) return;
+    const trackWidth = timelineScrubberTrackEl.clientWidth;
+    const thumbWidth = timelineScrubberThumbEl.offsetWidth;
+    const contentWidth = triggersTimelineScrollEl.scrollWidth;
+    const visibleWidth = triggersTimelineScrollEl.clientWidth;
+    const maxThumbLeft = trackWidth - thumbWidth;
+    const maxScrollLeft = contentWidth - visibleWidth;
+    if (maxThumbLeft <= 0 || maxScrollLeft <= 0) return;
+
+    const deltaX = e.clientX - scrubberDrag.startX;
+    triggersTimelineScrollEl.scrollLeft = scrubberDrag.startScrollLeft + (deltaX / maxThumbLeft) * maxScrollLeft;
+});
+
+function endScrubberDrag(e) {
+    if (!scrubberDrag) return;
+    scrubberDrag = null;
+    try {
+        timelineScrubberThumbEl.releasePointerCapture(e.pointerId);
+    } catch (err) {
+        // redan släppt - inget att göra.
+    }
+}
+
+timelineScrubberThumbEl.addEventListener("pointerup", endScrubberDrag);
+timelineScrubberThumbEl.addEventListener("pointercancel", endScrubberDrag);
+
+// Klick direkt på spåret (utanför handtaget) hoppar dit istället för att
+// bara flytta ett litet steg, som en vanlig scrollbar.
+timelineScrubberTrackEl.addEventListener("pointerdown", (e) => {
+    if (e.target === timelineScrubberThumbEl) return;
+    const rect = timelineScrubberTrackEl.getBoundingClientRect();
+    const clickRatio = (e.clientX - rect.left) / rect.width;
+    const contentWidth = triggersTimelineScrollEl.scrollWidth;
+    const visibleWidth = triggersTimelineScrollEl.clientWidth;
+    const centeredRatio = (clickRatio * contentWidth - visibleWidth / 2) / Math.max(1, contentWidth - visibleWidth);
+    scrollTimelineTo(centeredRatio);
+});
 
 async function loadTriggers() {
     triggersTimelineTrackEl.innerHTML = "";
@@ -2129,14 +2214,15 @@ function renderTriggersTimeline() {
         empty.className = "muted";
         empty.textContent = "Inga triggers hittades inom de närmaste två månaderna.";
         track.appendChild(empty);
+        updateTimelineScrubber();
         return;
     }
 
     const PX_PER_DAY = 60;
-    const LANE_HEIGHT = 250;
-    const MIN_GAP_PX = 185;
-    const SIDE_PADDING = 100;
-    const BASELINE_MARGIN = 40;
+    const LANE_HEIGHT = 180;
+    const MIN_GAP_PX = 270;
+    const SIDE_PADDING = 130;
+    const BASELINE_MARGIN = 20;
 
     const minDate = events[0].date;
     const maxDate = events[events.length - 1].date;
@@ -2173,6 +2259,14 @@ function renderTriggersTimeline() {
 
     track.style.width = `${trackWidth}px`;
     track.style.height = `${trackHeight}px`;
+
+    // Placerar det egna scroll-handtaget exakt i höjd med baslinjen
+    // (inte bara mitt i hela rutan, som kan hamna en bit ovanför/under
+    // baslinjen om upp- och nersidan behöver olika många våningar) - 10px
+    // är .triggers-timeline-scroll's egen padding-top.
+    const scrubberEl = document.querySelector(".timeline-scrubber");
+    scrubberEl.style.top = `${10 + baselineY}px`;
+    scrubberEl.style.transform = "translateY(-50%)";
 
     const toBottomPx = (yFromTop) => trackHeight - yFromTop;
 
@@ -2280,6 +2374,9 @@ function renderTriggersTimeline() {
 
     renderSide(upPlaced, "up");
     renderSide(downPlaced, "down");
+
+    triggersTimelineScrollEl.scrollLeft = 0;
+    updateTimelineScrubber();
 }
 
 function openTriggersTimeline() {
