@@ -18,7 +18,6 @@ hydrering i resolve_profiles(), inte dupliceras per skala.
 
 import json
 import os
-import re
 import time
 import uuid
 
@@ -30,18 +29,6 @@ _SCALES_PATH = os.path.join(os.path.dirname(__file__), "data", "custom_scales.js
 _REDIS_KEY = "aktiebetyg:custom_scales"
 
 _VALID_PROFILE_KEYS = {"default"} | {f"sector:{s}" for s in SECTOR_TRANSLATIONS}
-
-_DEFAULT_COLOR = "#f5c518"
-_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-
-
-def _clean_color(color):
-    """Faller tillbaka på standardfärgen (appens guldaccent) om värdet
-    saknas eller inte är en giltig hex-färg - ogiltig färg ska inte hindra
-    att skalan går att spara."""
-    if isinstance(color, str) and _HEX_COLOR_RE.match(color):
-        return color
-    return _DEFAULT_COLOR
 
 
 def _load():
@@ -99,7 +86,6 @@ def list_scales():
         {
             "id": s["id"],
             "name": s["name"],
-            "color": s.get("color", _DEFAULT_COLOR),
             "created_by": s.get("created_by"),
             "created_at": s["created_at"],
             "updated_at": s["updated_at"],
@@ -122,7 +108,7 @@ def get_scale(scale_id):
     return _load().get(scale_id)
 
 
-def create_scale(name, profiles, color=None, created_by=None):
+def create_scale(name, profiles, created_by=None):
     name = (name or "").strip()
     if not name:
         raise ValueError("Skalan måste ha ett namn.")
@@ -134,7 +120,6 @@ def create_scale(name, profiles, color=None, created_by=None):
     record = {
         "id": scale_id,
         "name": name,
-        "color": _clean_color(color),
         "created_by": created_by,
         "created_at": now,
         "updated_at": now,
@@ -145,7 +130,7 @@ def create_scale(name, profiles, color=None, created_by=None):
     return record
 
 
-def update_scale(scale_id, name, profiles, color=None):
+def update_scale(scale_id, name, profiles):
     name = (name or "").strip()
     if not name:
         raise ValueError("Skalan måste ha ett namn.")
@@ -156,7 +141,6 @@ def update_scale(scale_id, name, profiles, color=None):
         return None
     record = scales[scale_id]
     record["name"] = name
-    record["color"] = _clean_color(color)
     record["profiles"] = profiles
     record["updated_at"] = time.time()
     _save(scales)

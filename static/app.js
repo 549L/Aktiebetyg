@@ -245,6 +245,7 @@ function renderResult(data) {
         ? `Pris: ${data.price} ${data.currency}`
         : "";
     document.getElementById("ticker-industry").textContent = data.industry || data.sector || "";
+    document.getElementById("result-scale-badge").textContent = currentScaleDisplayName() || "";
     document.getElementById("company-description").textContent = data.description || "";
     const viewLabel = data.view_style_label || VIEW_STYLE_LABELS[data.view_style] || null;
     document.getElementById("scale-label").textContent = data.scale
@@ -586,8 +587,8 @@ const createScaleBtn = document.getElementById("create-scale-btn");
 const scalesSearchInput = document.getElementById("scales-search");
 
 function allScaleEntries() {
-    const builtin = BUILTIN_SCALES.map((s) => ({ rawId: s.id, scaleId: s.id, name: s.name, isCustom: false, color: null }));
-    const custom = customScales.map((s) => ({ rawId: s.id, scaleId: `custom:${s.id}`, name: s.name, isCustom: true, color: s.color, createdBy: s.created_by }));
+    const builtin = BUILTIN_SCALES.map((s) => ({ rawId: s.id, scaleId: s.id, name: s.name, isCustom: false }));
+    const custom = customScales.map((s) => ({ rawId: s.id, scaleId: `custom:${s.id}`, name: s.name, isCustom: true, createdBy: s.created_by }));
     return [...builtin, ...custom];
 }
 
@@ -648,7 +649,7 @@ function renderScalesList() {
 }
 
 function buildScaleRow(entry) {
-    const { scaleId, rawId, name, isCustom, color, createdBy } = entry;
+    const { scaleId, rawId, name, isCustom, createdBy } = entry;
     const li = document.createElement("li");
     li.className = "scale-row" + (scaleId === currentScaleId ? " active" : "");
 
@@ -658,7 +659,6 @@ function buildScaleRow(entry) {
     const nameSpan = document.createElement("span");
     nameSpan.className = "scale-row-name";
     nameSpan.textContent = name;
-    if (isCustom && color) nameSpan.style.color = color;
     nameSpan.addEventListener("click", () => selectScale(scaleId));
     topRow.appendChild(nameSpan);
 
@@ -753,27 +753,19 @@ scalesSearchInput.addEventListener("input", () => {
     renderScalesList();
 });
 
-function applyScaleTheme(scaleId) {
-    document.body.classList.remove("view-growth", "view-stability");
-    document.body.style.removeProperty("--accent");
-    if (scaleId === "growth") {
-        document.body.classList.add("view-growth");
-    } else if (scaleId === "stability") {
-        document.body.classList.add("view-stability");
-    } else if (scaleId.startsWith("custom:")) {
-        const rawId = scaleId.slice("custom:".length);
-        const scale = customScales.find((s) => s.id === rawId);
-        if (scale && scale.color) {
-            document.body.style.setProperty("--accent", scale.color);
-        }
-    }
-}
-
 function selectScale(scaleId) {
     currentScaleId = scaleId;
-    applyScaleTheme(scaleId);
     renderScalesList();
     if (currentTicker) runAnalysis(currentTicker);
+}
+
+// Namnet på den just nu valda betygsskalan (inbyggd eller egen) - visas som
+// en egen markering i analysrutan (se renderResult) så man alltid vet
+// vilken skala man tittar på, istället för att sidans färg ändrades (togs
+// bort - enda stället man numera ändrar sidans färg är i sin egen profil).
+function currentScaleDisplayName() {
+    const entry = allScaleEntries().find((e) => e.scaleId === currentScaleId);
+    return entry ? entry.name : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -900,11 +892,9 @@ const userProfileColorSectionEl = document.getElementById("user-profile-color-se
 const userProfileColorControlsEl = document.getElementById("user-profile-color-controls");
 
 // Egen accentfärg - ersätter --accent (se style.css) genom hela sidan när
-// man är inloggad. Sätts som en inline-stil på <html> så den vinner över
-// :root:s standardvärde, men body.view-growth/-stability (Tillväxt-/
-// Stabil-vyns egna gröna/blåa accentfärg, satt direkt på body-elementet)
-// fortsätter att slå igenom precis som innan - de är till för att tydligt
-// visa vilket läge man är i, oavsett egen färgsmak.
+// man är inloggad. Enda stället man kan ändra den är i sin egen profil -
+// vilken betygsskala man valt påverkar den inte (se selectScale/renderResult
+// för hur skalvalet istället visas, som en egen markering i analysrutan).
 function applyAccentColor(color) {
     if (color) {
         document.documentElement.style.setProperty("--accent", color);
@@ -1286,7 +1276,6 @@ const scaleEditorEl = document.getElementById("scale-editor");
 const scaleEditorTitle = document.getElementById("scale-editor-title");
 const scaleEditorBack = document.getElementById("scale-editor-back");
 const scaleNameInput = document.getElementById("scale-name-input");
-const scaleColorInput = document.getElementById("scale-color-input");
 const scaleSectorTabsEl = document.getElementById("scale-sector-tabs");
 const copyBuiltinSelect = document.getElementById("copy-builtin-select");
 const copyBuiltinBtn = document.getElementById("copy-builtin-btn");
@@ -1330,20 +1319,17 @@ async function openScaleEditor(existingId) {
             const res = await fetch(`/api/scales/${existingId}`);
             const record = await res.json();
             scaleNameInput.value = record.name;
-            scaleColorInput.value = record.color || "#f5c518";
             editorSlots = {};
             Object.entries(record.profiles).forEach(([key, slot]) => {
                 editorSlots[key] = slot.metrics.map((m) => ({ ...m }));
             });
         } catch (err) {
             scaleNameInput.value = "";
-            scaleColorInput.value = "#f5c518";
         }
     } else {
         editorScaleId = null;
         scaleEditorTitle.textContent = "Skapa egen betygsskala";
         scaleNameInput.value = "";
-        scaleColorInput.value = "#f5c518";
         editorSlots = { default: [] };
     }
 
@@ -1659,7 +1645,6 @@ document.addEventListener("click", (e) => {
 
 scaleSaveBtn.addEventListener("click", async () => {
     const name = scaleNameInput.value.trim();
-    const color = scaleColorInput.value;
     scaleEditorError.classList.add("hidden");
 
     const profiles = {};
@@ -1677,7 +1662,7 @@ scaleSaveBtn.addEventListener("click", async () => {
         const res = await fetch(url, {
             method,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, color, profiles }),
+            body: JSON.stringify({ name, profiles }),
         });
         const data = await res.json();
         if (!res.ok) {

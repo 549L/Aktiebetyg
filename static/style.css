@@ -23,21 +23,6 @@ body {
     transition: background 0.2s ease;
 }
 
-/* Tillväxtbolag/Stabila bolag-vyn (och ingetdera valt = "orginalläget", gult
-   som default ovan i :root) färgar om --accent (som redan används av
-   knappar, chip-kanter, branschmärken, topplistans rangordning, MACD-linjen
-   m.fl.) genom hela sidan, så det syns tydligt vilket läge man är i - inte
-   bara på själva knappen. Se view-style-btn-lyssnaren i app.js. */
-body.view-growth {
-    --accent: var(--green);
-    background: #0f1512;
-}
-
-body.view-stability {
-    --accent: #4d8dff;
-    background: #0d121a;
-}
-
 main {
     max-width: 760px;
     margin: 0 auto;
@@ -657,12 +642,6 @@ button:disabled {
     font-size: 1.3rem;
 }
 
-.editor-name-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-}
-
 .editor-field {
     display: flex;
     flex-direction: column;
@@ -672,10 +651,6 @@ button:disabled {
     margin-bottom: 20px;
 }
 
-.editor-field:first-child {
-    flex: 1;
-}
-
 .editor-field input {
     padding: 10px 14px;
     border-radius: 8px;
@@ -683,27 +658,6 @@ button:disabled {
     background: var(--bg);
     color: var(--text);
     font-size: 1rem;
-}
-
-.editor-color-field {
-    flex-shrink: 0;
-}
-
-.editor-color-field input[type="color"] {
-    padding: 3px;
-    width: 60px;
-    height: 42px;
-    cursor: pointer;
-}
-
-@media (max-width: 600px) {
-    .editor-name-row {
-        flex-direction: column;
-        gap: 0;
-    }
-    .editor-color-field input[type="color"] {
-        width: 100%;
-    }
 }
 
 .scale-sector-tabs {
@@ -1419,6 +1373,21 @@ section.panel-collapsed .panel-body {
 }
 
 .industry-tag:empty {
+    display: none;
+}
+
+.scale-badge {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.scale-badge:empty {
     display: none;
 }
 

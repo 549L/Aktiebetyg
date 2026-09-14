@@ -152,7 +152,7 @@ def scales():
     body = request.get_json(silent=True) or {}
     try:
         record = scales_store.create_scale(
-            body.get("name"), body.get("profiles") or {}, color=body.get("color"), created_by=session.get("username")
+            body.get("name"), body.get("profiles") or {}, created_by=session.get("username")
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
@@ -188,7 +188,7 @@ def scale_detail(scale_id):
     body = request.get_json(silent=True) or {}
     try:
         record = scales_store.update_scale(
-            scale_id, body.get("name"), body.get("profiles") or {}, color=body.get("color")
+            scale_id, body.get("name"), body.get("profiles") or {}
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
