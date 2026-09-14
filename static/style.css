@@ -592,6 +592,22 @@ button:disabled {
     margin: 0 0 4px;
 }
 
+#chat-room-ticker-btn {
+    display: inline-block;
+    margin: 10px 0 16px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+#chat-room-ticker-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
 #user-profile h3 {
     margin: 24px 0 10px;
     font-size: 1rem;

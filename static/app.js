@@ -1860,6 +1860,7 @@ const chatRoomEl = document.getElementById("chat-room");
 const chatRoomBackBtn = document.getElementById("chat-room-back");
 const chatRoomTitleEl = document.getElementById("chat-room-title");
 const chatRoomMetaEl = document.getElementById("chat-room-meta");
+const chatRoomTickerBtn = document.getElementById("chat-room-ticker-btn");
 const chatRoomMessagesEl = document.getElementById("chat-room-messages");
 const chatRoomEmptyEl = document.getElementById("chat-room-empty");
 const chatRoomForm = document.getElementById("chat-room-form");
@@ -1928,6 +1929,13 @@ async function loadChatRoom(roomId) {
         const room = await res.json();
         chatRoomTitleEl.textContent = room.name;
         chatRoomMetaEl.textContent = room.ticker ? `Länkad till ${room.ticker}` : "Öppen för alla ämnen";
+        if (room.ticker) {
+            chatRoomTickerBtn.textContent = `📈 Se analys av ${room.ticker}`;
+            chatRoomTickerBtn.dataset.ticker = room.ticker;
+            chatRoomTickerBtn.classList.remove("hidden");
+        } else {
+            chatRoomTickerBtn.classList.add("hidden");
+        }
         renderChatMessages(chatRoomMessagesEl, chatRoomEmptyEl, room.messages);
     } catch (err) {
         // Chatten är en extra funktion - misslyckas hämtningen visas bara inget nytt.
@@ -1951,6 +1959,19 @@ function closeChatRoom() {
     chatRoomEl.classList.add("hidden");
     mainViewEl.classList.remove("hidden");
 }
+
+// Snabbväg från en aktielänkad chatt till samma akties analys - alltid
+// med "549L Vanliga bolag" (den vanliga/oviktade skalan), oavsett vilken
+// betygsskala man råkade ha valt innan man gick in i chatten.
+chatRoomTickerBtn.addEventListener("click", () => {
+    const ticker = chatRoomTickerBtn.dataset.ticker;
+    if (!ticker) return;
+    closeChatRoom();
+    currentScaleId = "default";
+    renderScalesList();
+    document.getElementById("ticker-input").value = ticker;
+    runAnalysis(ticker);
+});
 
 chatRoomBackBtn.addEventListener("click", closeChatRoom);
 
