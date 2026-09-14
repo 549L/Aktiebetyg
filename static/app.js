@@ -2080,9 +2080,9 @@ chatRoomForm.addEventListener("submit", async (e) => {
 // ---------------------------------------------------------------------------
 // Triggers tidslinjen - en egen fullbred sektion (samma "ersätter
 // #main-view"-mönster som profilsidan/chattrummet) med en horisontell
-// tidslinje över upp till 50 handplockade, rankade potentiella framtida
-// triggers (se triggers_data.py på serversidan - INTE en live datakälla,
-// därför visas disclaimer-texten alltid överst).
+// tidslinje över upp till 20 handplockade, rankade potentiella triggers
+// inom de närmaste ~2 månaderna (se triggers_data.py på serversidan -
+// INTE en live datakälla, därför visas disclaimer-texten alltid överst).
 // ---------------------------------------------------------------------------
 
 const triggersLauncherBtn = document.getElementById("triggers-launcher");
@@ -2094,7 +2094,7 @@ const triggersTimelineTrackEl = document.getElementById("triggers-timeline-track
 const triggersCountTabs = document.querySelectorAll(".triggers-count-tab");
 
 let triggersData = [];
-let triggersCount = 50;
+let triggersCount = 20;
 
 async function loadTriggers() {
     triggersTimelineTrackEl.innerHTML = "";
@@ -2110,11 +2110,13 @@ async function loadTriggers() {
     renderTriggersTimeline();
 }
 
-// Placerar varje händelse (sorterade efter datum) längs den horisontella
-// baslinjen, och tilldelar den en "våning" (lane) - den lägsta våning där
-// den inte hamnar för nära föregående etikett i samma våning - så att
-// etiketterna aldrig överlappar varandra oavsett hur tätt händelserna
-// ligger i tiden.
+// Baslinjen ligger mitt i rutan - hälften av händelserna (växlande i
+// datumordning) får sin vertikala linje uppåt, hälften nedåt, så man kan
+// bläddra rakt fram genom ALLA händelser istället för att de travas i en
+// enda, allt högre stapel uppåt (som tidigare kunde bli så hög att man
+// inte kom åt de översta genom att bara scrolla). Varje sida packas för
+// sig med samma "lägsta fria våning"-algoritm som innan, så etiketter
+// aldrig överlappar varandra inom samma sida.
 function renderTriggersTimeline() {
     const track = triggersTimelineTrackEl;
     track.innerHTML = "";
@@ -2125,16 +2127,16 @@ function renderTriggersTimeline() {
         track.style.height = "80px";
         const empty = document.createElement("p");
         empty.className = "muted";
-        empty.textContent = "Inga triggers att visa.";
+        empty.textContent = "Inga triggers hittades inom de närmaste två månaderna.";
         track.appendChild(empty);
         return;
     }
 
-    const PX_PER_DAY = 55;
-    const LANE_HEIGHT = 245;
+    const PX_PER_DAY = 60;
+    const LANE_HEIGHT = 250;
     const MIN_GAP_PX = 185;
     const SIDE_PADDING = 100;
-    const BASELINE_BOTTOM = 50;
+    const BASELINE_MARGIN = 40;
 
     const minDate = events[0].date;
     const maxDate = events[events.length - 1].date;
@@ -2145,29 +2147,41 @@ function renderTriggersTimeline() {
         return SIDE_PADDING + ((date - minDate) / 86400) * PX_PER_DAY;
     }
 
-    const laneLastX = [];
-    const placed = events.map((event) => {
-        const x = xFor(event.date);
-        let lane = 0;
-        while (laneLastX[lane] !== undefined && x - laneLastX[lane] < MIN_GAP_PX) {
-            lane++;
-        }
-        laneLastX[lane] = x;
-        return { event, x, lane };
-    });
+    function packLanes(subset) {
+        const laneLastX = [];
+        return subset.map(({ event, x }) => {
+            let lane = 0;
+            while (laneLastX[lane] !== undefined && x - laneLastX[lane] < MIN_GAP_PX) {
+                lane++;
+            }
+            laneLastX[lane] = x;
+            return { event, x, lane };
+        });
+    }
 
-    const maxLane = Math.max(...placed.map((p) => p.lane));
-    const trackHeight = BASELINE_BOTTOM + (maxLane + 1) * LANE_HEIGHT + 30;
+    const withX = events.map((event, i) => ({ event, x: xFor(event.date), side: i % 2 === 0 ? "up" : "down" }));
+    const upPlaced = packLanes(withX.filter((e) => e.side === "up"));
+    const downPlaced = packLanes(withX.filter((e) => e.side === "down"));
+
+    const maxUpLane = upPlaced.length ? Math.max(...upPlaced.map((p) => p.lane)) : -1;
+    const maxDownLane = downPlaced.length ? Math.max(...downPlaced.map((p) => p.lane)) : -1;
+
+    const upSpace = BASELINE_MARGIN + (maxUpLane + 1) * LANE_HEIGHT;
+    const downSpace = BASELINE_MARGIN + (maxDownLane + 1) * LANE_HEIGHT;
+    const trackHeight = upSpace + downSpace + 40;
+    const baselineY = upSpace + 20; // avstånd från trackens topp ner till baslinjen
 
     track.style.width = `${trackWidth}px`;
     track.style.height = `${trackHeight}px`;
 
+    const toBottomPx = (yFromTop) => trackHeight - yFromTop;
+
     const baseline = document.createElement("div");
     baseline.className = "timeline-baseline";
-    baseline.style.bottom = `${BASELINE_BOTTOM}px`;
+    baseline.style.top = `${baselineY}px`;
     track.appendChild(baseline);
 
-    // Månadsmarkeringar längs baslinjen, som referens för var på
+    // Månadsmarkeringar mitt på baslinjen, som referens för var på
     // tidslinjen man befinner sig.
     const firstMonth = new Date(minDate * 1000);
     firstMonth.setUTCDate(1);
@@ -2180,64 +2194,92 @@ function renderTriggersTimeline() {
         const tick = document.createElement("div");
         tick.className = "timeline-month-tick";
         tick.style.left = `${x}px`;
-        tick.style.bottom = `${BASELINE_BOTTOM}px`;
+        tick.style.top = `${baselineY - 7}px`;
         track.appendChild(tick);
 
         const label = document.createElement("div");
         label.className = "timeline-month-label";
         label.style.left = `${x}px`;
-        label.style.bottom = `${BASELINE_BOTTOM - 22}px`;
+        label.style.top = `${baselineY + 12}px`;
         label.textContent = cursor.toLocaleDateString("sv-SE", { month: "short", year: "numeric" });
         track.appendChild(label);
     }
 
-    placed.forEach(({ event, x, lane }) => {
-        const lineTop = BASELINE_BOTTOM + (lane + 1) * LANE_HEIGHT;
+    function renderSide(placed, side) {
+        placed.forEach(({ event, x, lane }) => {
+            const lineLength = BASELINE_MARGIN + (lane + 1) * LANE_HEIGHT;
 
-        const line = document.createElement("div");
-        line.className = "timeline-event-line";
-        line.style.left = `${x}px`;
-        line.style.bottom = `${BASELINE_BOTTOM}px`;
-        line.style.height = `${lineTop - BASELINE_BOTTOM}px`;
-        track.appendChild(line);
+            const line = document.createElement("div");
+            line.className = "timeline-event-line";
+            line.style.left = `${x}px`;
+            line.style.height = `${lineLength - BASELINE_MARGIN}px`;
+            if (side === "up") {
+                line.style.bottom = `${toBottomPx(baselineY)}px`;
+            } else {
+                line.style.top = `${baselineY}px`;
+            }
+            track.appendChild(line);
 
-        const dot = document.createElement("div");
-        dot.className = "timeline-event-dot";
-        dot.style.left = `${x}px`;
-        dot.style.bottom = `${BASELINE_BOTTOM}px`;
-        track.appendChild(dot);
+            const dot = document.createElement("div");
+            dot.className = "timeline-event-dot";
+            dot.style.left = `${x}px`;
+            dot.style.top = `${baselineY}px`;
+            track.appendChild(dot);
 
-        const label = document.createElement("div");
-        label.className = "timeline-event-label";
-        label.style.left = `${x}px`;
-        label.style.bottom = `${lineTop}px`;
+            const label = document.createElement("div");
+            label.className = `timeline-event-label timeline-event-label-${side}`;
+            label.style.left = `${x}px`;
+            if (side === "up") {
+                label.style.bottom = `${toBottomPx(baselineY - lineLength + BASELINE_MARGIN)}px`;
+            } else {
+                label.style.top = `${baselineY + lineLength - BASELINE_MARGIN}px`;
+            }
 
-        const rankEl = document.createElement("span");
-        rankEl.className = "timeline-event-rank";
-        rankEl.textContent = `#${event.rank}`;
-        label.appendChild(rankEl);
+            const rankEl = document.createElement("span");
+            rankEl.className = "timeline-event-rank";
+            rankEl.textContent = `#${event.rank}`;
+            label.appendChild(rankEl);
 
-        const companyEl = document.createElement("span");
-        companyEl.className = "timeline-event-company";
-        companyEl.textContent = `${event.company} `;
-        const tickerEl = document.createElement("span");
-        tickerEl.className = "timeline-event-ticker";
-        tickerEl.textContent = event.ticker;
-        companyEl.appendChild(tickerEl);
-        label.appendChild(companyEl);
+            const companyEl = document.createElement("span");
+            companyEl.className = "timeline-event-company";
+            companyEl.textContent = `${event.company} `;
+            const tickerEl = document.createElement("span");
+            tickerEl.className = "timeline-event-ticker";
+            tickerEl.textContent = event.ticker;
+            companyEl.appendChild(tickerEl);
+            label.appendChild(companyEl);
 
-        const dateEl = document.createElement("span");
-        dateEl.className = "timeline-event-date";
-        dateEl.textContent = formatAccountDate(event.date);
-        label.appendChild(dateEl);
+            const dateEl = document.createElement("span");
+            dateEl.className = "timeline-event-date";
+            dateEl.textContent = formatAccountDate(event.date);
+            label.appendChild(dateEl);
 
-        const descEl = document.createElement("span");
-        descEl.className = "timeline-event-desc";
-        descEl.textContent = event.description;
-        label.appendChild(descEl);
+            const descEl = document.createElement("span");
+            descEl.className = "timeline-event-desc";
+            descEl.textContent = event.description;
+            label.appendChild(descEl);
 
-        track.appendChild(label);
-    });
+            // Ungefärlig, historiskt grundad bedömning av hur mycket
+            // aktien skulle kunna röra sig procentuellt beroende på om
+            // utfallet blir positivt eller negativt - se disclaimern.
+            const impactEl = document.createElement("span");
+            impactEl.className = "timeline-event-impact";
+            const downEl = document.createElement("span");
+            downEl.className = "timeline-event-impact-down";
+            downEl.textContent = `↓ −${event.impact_down}%`;
+            const upEl = document.createElement("span");
+            upEl.className = "timeline-event-impact-up";
+            upEl.textContent = `↑ +${event.impact_up}%`;
+            impactEl.appendChild(downEl);
+            impactEl.appendChild(upEl);
+            label.appendChild(impactEl);
+
+            track.appendChild(label);
+        });
+    }
+
+    renderSide(upPlaced, "up");
+    renderSide(downPlaced, "down");
 }
 
 function openTriggersTimeline() {

@@ -1,4 +1,5 @@
 import os
+import time
 
 from flask import Flask, jsonify, render_template, request, session, url_for
 
@@ -181,7 +182,14 @@ def builtin_profiles():
 def triggers():
     # Se triggers_data.py - en handplockad lista, INTE en live datakälla.
     # disclaimer skickas alltid med så frontend kan visa den synligt.
-    return jsonify({"disclaimer": TRIGGERS_DISCLAIMER, "triggers": TRIGGERS})
+    # Filtrerar till "nu och max ~2 månader framåt" vid varje anrop - inte
+    # bara vid författandet av triggers_data.py - så listan aldrig visar
+    # redan passerade händelser eller (om filen någon gång utökas) något
+    # längre bort än det fönster som efterfrågades.
+    now = time.time()
+    window_end = now + 60 * 86400
+    upcoming = [t for t in TRIGGERS if now <= t["date"] <= window_end]
+    return jsonify({"disclaimer": TRIGGERS_DISCLAIMER, "triggers": upcoming})
 
 
 @app.route("/api/scales", methods=["GET", "POST"])
