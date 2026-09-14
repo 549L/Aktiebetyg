@@ -2081,14 +2081,12 @@ chatRoomForm.addEventListener("submit", async (e) => {
 // Triggers tidslinjen - en egen fullbred sektion (samma "ersätter
 // #main-view"-mönster som profilsidan/chattrummet) med en horisontell
 // tidslinje över upp till 20 handplockade, rankade potentiella triggers
-// inom de närmaste ~2 månaderna (se triggers_data.py på serversidan -
-// INTE en live datakälla, därför visas disclaimer-texten alltid överst).
+// inom de närmaste ~2 månaderna (se triggers_data.py på serversidan).
 // ---------------------------------------------------------------------------
 
 const triggersLauncherBtn = document.getElementById("triggers-launcher");
 const triggersTimelineEl = document.getElementById("triggers-timeline");
 const triggersBackBtn = document.getElementById("triggers-back");
-const triggersDisclaimerEl = document.getElementById("triggers-disclaimer");
 const triggersTimelineScrollEl = document.getElementById("triggers-timeline-scroll");
 const triggersTimelineTrackEl = document.getElementById("triggers-timeline-track");
 const triggersCountTabs = document.querySelectorAll(".triggers-count-tab");
@@ -2186,11 +2184,9 @@ async function loadTriggers() {
     try {
         const res = await fetch("/api/triggers");
         const data = await res.json();
-        triggersDisclaimerEl.textContent = data.disclaimer || "";
         triggersData = data.triggers || [];
     } catch (err) {
         triggersData = [];
-        triggersDisclaimerEl.textContent = "Kunde inte hämta triggers just nu.";
     }
     renderTriggersTimeline();
 }

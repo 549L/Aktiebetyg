@@ -1285,17 +1285,6 @@ input[type="range"].weight-slider::-moz-range-thumb {
     color: white;
 }
 
-.triggers-disclaimer {
-    margin: 0 0 20px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 0.8rem;
-    line-height: 1.5;
-}
-
 .triggers-timeline-wrap {
     position: relative;
 }
