@@ -35,13 +35,24 @@ def _require_login():
 
 
 @app.after_request
-def _no_store(response):
-    # Allt är personligt eller ändras ofta (API-svar skiljer sig per
-    # inloggat konto, JS/HTML kan ändras vid en omdeploy) - utan detta kan
+def _cache_control(response):
+    # API-svar och själva sidan (index.html) är personliga eller ändras
+    # ofta (svaret skiljer sig per inloggat konto) - utan no-store kan
     # webbläsaren återanvända ett cachat svar från en annan användare efter
-    # att man loggat in som någon annan i samma flik, eller köra gammal
-    # cachad app.js/index.html efter en uppdatering.
-    response.headers["Cache-Control"] = "no-store"
+    # att man loggat in som någon annan i samma flik.
+    #
+    # /static/* (app.js/style.css/favicon.svg) är däremot samma för alla
+    # och ändras bara vid en omdeploy - de fick tidigare också no-store av
+    # misstag, vilket tvingade webbläsaren att hämta om hela app.js (~90 kB)
+    # och style.css (~35 kB) på nytt vid VARJE sidladdning. En måttlig
+    # max-age (webbläsaren slipper fråga servern alls under den tiden) +
+    # Flasks inbyggda ETag som fallback (en snabb 304 istället för att
+    # hämta om hela filen om cachen redan gått ut) ger snabbare sidladdning
+    # utan att riskera långvarigt inaktuell JS/CSS efter en omdeploy.
+    if request.endpoint == "static":
+        response.headers["Cache-Control"] = "public, max-age=3600"
+    else:
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 

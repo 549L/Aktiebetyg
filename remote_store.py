@@ -23,6 +23,12 @@ from curl_cffi import requests as creq
 _REST_URL = os.environ.get("UPSTASH_REDIS_REST_URL")
 _REST_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
 
+# Varje store-modul (users_store.py m.fl.) gör flera separata anrop hit per
+# sidladdning. En delad Session (istället för en fristående creq.get/post
+# per anrop) återanvänder samma TCP/TLS-anslutning mot Upstash mellan dem,
+# så bara det första anropet betalar handskakningskostnaden.
+_session = creq.Session()
+
 
 def enabled():
     return bool(_REST_URL and _REST_TOKEN)
@@ -39,7 +45,7 @@ def get_json(key, default):
     if not enabled():
         return default
     try:
-        resp = creq.get(f"{_REST_URL}/get/{key}", headers=_headers(), timeout=10)
+        resp = _session.get(f"{_REST_URL}/get/{key}", headers=_headers(), timeout=10)
         raw = resp.json().get("result")
         return json.loads(raw) if raw is not None else default
     except Exception:
@@ -52,6 +58,6 @@ def set_json(key, value):
     if not enabled():
         return
     try:
-        creq.post(f"{_REST_URL}/set/{key}", headers=_headers(), data=json.dumps(value), timeout=10)
+        _session.post(f"{_REST_URL}/set/{key}", headers=_headers(), data=json.dumps(value), timeout=10)
     except Exception:
         pass

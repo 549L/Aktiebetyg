@@ -66,6 +66,11 @@ def _save(users):
 
 
 def _ensure_admin_seeded():
+    """Läser in alla konton och säkerställer att admin-kontot finns.
+    Returnerar den inlästa dicten så anroparna nedan kan återanvända den
+    direkt istället för att läsa in en gång till - annars gjorde varje
+    anrop till create_user/verify_login/get_user/list_users två
+    Redis-/fil-läsningar (en här, en till i anroparen) där en räcker."""
     users = _load()
     if _ADMIN_USERNAME not in users:
         users[_ADMIN_USERNAME] = {
@@ -74,6 +79,7 @@ def _ensure_admin_seeded():
             "created_at": time.time(),
         }
         _save(users)
+    return users
 
 
 def create_user(username, password):
@@ -85,8 +91,7 @@ def create_user(username, password):
     if not password:
         raise ValueError("Ange ett lösenord.")
 
-    _ensure_admin_seeded()
-    users = _load()
+    users = _ensure_admin_seeded()
     if username in users:
         raise ValueError("Användarnamnet är upptaget.")
 
@@ -103,9 +108,8 @@ def verify_login(username, password):
     """Returnerar {"username", "is_admin"} vid lyckad inloggning, annars
     None. Kastar aldrig - fel användarnamn/lösenord ska bara ge None så
     anroparen kan visa ett generellt felmeddelande."""
-    _ensure_admin_seeded()
     username = (username or "").strip()
-    users = _load()
+    users = _ensure_admin_seeded()
     account = users.get(username)
     if not account or not check_password_hash(account["password_hash"], password or ""):
         return None
@@ -118,8 +122,7 @@ def verify_login(username, password):
 
 
 def get_user(username):
-    _ensure_admin_seeded()
-    account = _load().get(username)
+    account = _ensure_admin_seeded().get(username)
     if not account:
         return None
     return {
@@ -134,8 +137,7 @@ def get_user(username):
 
 def list_users():
     """Alla konton (utan lösenordshash) - underlag för användarsökningen."""
-    _ensure_admin_seeded()
-    users = _load()
+    users = _ensure_admin_seeded()
     return [
         {
             "username": name,
