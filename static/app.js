@@ -2191,12 +2191,12 @@ async function loadTriggers() {
     renderTriggersTimeline();
 }
 
-// Liten förhandsvisning i själva rutan på hemskärmen - bara en linje med
-// några prickar utspridda efter datum, inget klick per prick (hela rutan
-// öppnar redan hela tidslinjen). Hämtas en gång vid inloggning, oberoende
-// av loadTriggers() ovan (som bara körs när man faktiskt öppnar den
-// fullskärmsvyn) - annars skulle förhandsvisningen förbli tom tills man
-// redan öppnat tidslinjen en gång.
+// Liten tabell i själva rutan på hemskärmen - alla bolag som finns med
+// på tidslinjen, rankade, med sin möjliga kursförändring. Ingen egen
+// klickfunktion per rad (hela rutan öppnar redan hela tidslinjen).
+// Hämtas en gång vid inloggning, oberoende av loadTriggers() ovan (som
+// bara körs när man faktiskt öppnar fullskärmsvyn) - annars skulle
+// tabellen förbli tom tills man redan öppnat tidslinjen en gång.
 async function loadTriggersMiniPreview() {
     try {
         const res = await fetch("/api/triggers");
@@ -2209,23 +2209,36 @@ async function loadTriggersMiniPreview() {
 }
 
 function renderTriggersMiniPreview() {
-    const el = document.getElementById("triggers-mini-timeline");
-    if (!el) return;
-    el.querySelectorAll(".triggers-mini-dot").forEach((dot) => dot.remove());
+    const body = document.getElementById("triggers-mini-table-body");
+    if (!body) return;
+    body.innerHTML = "";
 
-    const events = triggersData.slice(0, 8);
-    if (events.length === 0) return;
-
-    const dates = events.map((e) => e.date);
-    const minDate = Math.min(...dates);
-    const maxDate = Math.max(...dates);
-    const span = maxDate - minDate;
-
+    const events = triggersData.slice().sort((a, b) => a.rank - b.rank);
     events.forEach((event) => {
-        const dot = document.createElement("div");
-        dot.className = "triggers-mini-dot";
-        dot.style.left = `${span > 0 ? ((event.date - minDate) / span) * 100 : 50}%`;
-        el.appendChild(dot);
+        const tr = document.createElement("tr");
+
+        const companyTd = document.createElement("td");
+        companyTd.className = "triggers-mini-table-company";
+        companyTd.textContent = `${event.company} `;
+        const tickerEl = document.createElement("span");
+        tickerEl.className = "triggers-mini-table-ticker";
+        tickerEl.textContent = event.ticker;
+        companyTd.appendChild(tickerEl);
+        tr.appendChild(companyTd);
+
+        const impactTd = document.createElement("td");
+        impactTd.className = "triggers-mini-table-impact";
+        const downEl = document.createElement("span");
+        downEl.className = "timeline-event-impact-down";
+        downEl.textContent = `↓ −${event.impact_down}%`;
+        const upEl = document.createElement("span");
+        upEl.className = "timeline-event-impact-up";
+        upEl.textContent = `↑ +${event.impact_up}%`;
+        impactTd.appendChild(downEl);
+        impactTd.appendChild(upEl);
+        tr.appendChild(impactTd);
+
+        body.appendChild(tr);
     });
 }
 
