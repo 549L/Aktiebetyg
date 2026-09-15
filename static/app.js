@@ -2191,6 +2191,44 @@ async function loadTriggers() {
     renderTriggersTimeline();
 }
 
+// Liten förhandsvisning i själva rutan på hemskärmen - bara en linje med
+// några prickar utspridda efter datum, inget klick per prick (hela rutan
+// öppnar redan hela tidslinjen). Hämtas en gång vid inloggning, oberoende
+// av loadTriggers() ovan (som bara körs när man faktiskt öppnar den
+// fullskärmsvyn) - annars skulle förhandsvisningen förbli tom tills man
+// redan öppnat tidslinjen en gång.
+async function loadTriggersMiniPreview() {
+    try {
+        const res = await fetch("/api/triggers");
+        const data = await res.json();
+        triggersData = data.triggers || [];
+    } catch (err) {
+        triggersData = [];
+    }
+    renderTriggersMiniPreview();
+}
+
+function renderTriggersMiniPreview() {
+    const el = document.getElementById("triggers-mini-timeline");
+    if (!el) return;
+    el.querySelectorAll(".triggers-mini-dot").forEach((dot) => dot.remove());
+
+    const events = triggersData.slice(0, 8);
+    if (events.length === 0) return;
+
+    const dates = events.map((e) => e.date);
+    const minDate = Math.min(...dates);
+    const maxDate = Math.max(...dates);
+    const span = maxDate - minDate;
+
+    events.forEach((event) => {
+        const dot = document.createElement("div");
+        dot.className = "triggers-mini-dot";
+        dot.style.left = `${span > 0 ? ((event.date - minDate) / span) * 100 : 50}%`;
+        el.appendChild(dot);
+    });
+}
+
 // Baslinjen ligger mitt i rutan - hälften av händelserna (växlande i
 // datumordning) får sin vertikala linje uppåt, hälften nedåt, så man kan
 // bläddra rakt fram genom ALLA händelser istället för att de travas i en
@@ -2579,6 +2617,7 @@ function showLoggedIn(account) {
         loadUsers();
         loadScales();
         loadCommunityRooms();
+        loadTriggersMiniPreview();
     }
     startCommunityPolling();
 }
