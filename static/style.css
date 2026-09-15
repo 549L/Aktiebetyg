@@ -1126,10 +1126,19 @@ input[type="range"].weight-slider::-moz-range-thumb {
    med på tidslinjen (rankade, samma data som den riktiga tidslinjen
    redan hämtar) med sin möjliga kursförändring. Kan bli fler rader än
    det är plats för i rutan - .triggers-mini-table-wrap scrollar då
-   istället för att växa rutan obegränsat, så alla ändå "får plats". */
+   istället för att växa rutan obegränsat, så alla ändå "får plats".
+
+   På bred skärm (sida vid sida med Community i .side-panels) sträcks
+   .triggers-launcher av CSS grid till samma höjd som Community - utan
+   flex:1 här skulle tabellen då bara fylla en fast, låg höjd och lämna
+   ett tomt gap under sig ner till kortets nedre kant. flex:1 låter den
+   istället växa och fylla hela den höjden. Mobilen (en kolumn, inget att
+   sträcka mot) återställer detta till en fast maxhöjd i mobil-media-
+   queryn längre ner - orört, som innan. */
 .triggers-mini-table-wrap {
     width: 100%;
-    max-height: 220px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
@@ -1187,6 +1196,15 @@ input[type="range"].weight-slider::-moz-range-thumb {
 
 .triggers-mini-table-impact span {
     display: block;
+}
+
+/* Mobilen: en kolumn i .side-panels (inget att sträcka mot), så samma
+   fasta maxhöjd + scroll som innan - orört från förra ändringen. */
+@media (max-width: 600px) {
+    .triggers-mini-table-wrap {
+        flex: none;
+        max-height: 220px;
+    }
 }
 
 .triggers-launcher-cta {
