@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aktiebetyg startar...</title>
+<style>
+    :root {
+        color-scheme: dark;
+        --bg: #141208;
+        --panel: #171a21;
+        --border: #2a2e38;
+        --text: #e8e9ed;
+        --muted: #9aa0ab;
+        --accent: #f5c518;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        height: 100%;
+    }
+
+    body {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .card {
+        width: 100%;
+        max-width: 380px;
+        margin: 24px;
+        padding: 36px 28px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.6);
+        text-align: center;
+    }
+
+    .brand-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--accent);
+        margin-bottom: 6px;
+    }
+
+    .brand-icon .needle {
+        transform-origin: 32px 32px;
+        animation: sweep 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+
+    @keyframes sweep {
+        0% { transform: rotate(0deg); }
+        50% { transform: rotate(230deg); }
+        100% { transform: rotate(0deg); }
+    }
+
+    h1 {
+        margin: 4px 0 4px;
+        font-size: 1.5rem;
+        color: var(--accent);
+    }
+
+    .subtitle {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 0.85rem;
+    }
+
+    #status {
+        min-height: 44px;
+        margin: 0 0 18px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .progress-track {
+        position: relative;
+        width: 100%;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--border);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .progress-bar {
+        position: absolute;
+        top: 0;
+        left: -40%;
+        width: 40%;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--accent);
+        animation: slide 1.3s ease-in-out infinite;
+    }
+
+    @keyframes slide {
+        0% { left: -40%; }
+        100% { left: 100%; }
+    }
+
+    .elapsed {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 0.78rem;
+    }
+
+    a.fallback {
+        display: inline-block;
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    a.fallback:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
+
+    a.fallback.emphasize {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>
+</head>
+<body>
+    <div class="card">
+        <svg class="brand-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <circle cx="32" cy="32" r="31" fill="var(--panel)"/>
+            <circle cx="32" cy="32" r="20" stroke="currentColor" stroke-width="2.5" opacity="0.45"/>
+            <g stroke="currentColor" stroke-width="2.5" opacity="0.45" stroke-linecap="round">
+                <line x1="32" y1="8" x2="32" y2="16"/>
+                <line x1="52.78" y1="20" x2="45.86" y2="24"/>
+                <line x1="52.78" y1="44" x2="45.86" y2="40"/>
+                <line x1="32" y1="56" x2="32" y2="48"/>
+                <line x1="11.22" y1="44" x2="18.14" y2="40"/>
+                <line x1="11.22" y1="20" x2="18.14" y2="24"/>
+            </g>
+            <line class="needle" x1="32" y1="32" x2="48" y2="11.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="32" cy="32" r="4.5" fill="currentColor"/>
+        </svg>
+
+        <h1>Aktiebetyg</h1>
+        <p class="subtitle">startar upp</p>
+
+        <p id="status">Väcker servern...</p>
+
+        <div class="progress-track">
+            <div class="progress-bar"></div>
+        </div>
+
+        <p class="elapsed" id="elapsed"></p>
+
+        <a class="fallback" id="fallback-link" href="https://aktiebetyg.onrender.com/">Vill du inte vänta? Gå till sidan direkt →</a>
+    </div>
+
+    <script>
+        var TARGET_URL = "https://aktiebetyg.onrender.com/";
+        var ATTEMPT_TIMEOUT_MS = 8000;
+        var RETRY_DELAY_MS = 2000;
+        var startedAt = Date.now();
+
+        var statusEl = document.getElementById("status");
+        var elapsedEl = document.getElementById("elapsed");
+        var fallbackEl = document.getElementById("fallback-link");
+
+        // Servern brukar somna efter ~15 minuters inaktivitet (Renders gratisplan)
+        // och kan ta upp till en minut att vakna igen - texten trappas upp i takt
+        // med att väntetiden drar ut på tiden, så det aldrig känns som att sidan
+        // bara hängt sig.
+        function statusForElapsed(seconds) {
+            if (seconds < 10) return "Väcker servern...";
+            if (seconds < 25) return "Fortfarande på väg upp...";
+            if (seconds < 45) return "Nästan där, det här tar ibland en stund...";
+            return "Tar längre än vanligt - men den brukar komma igång strax.";
+        }
+
+        function tickElapsed() {
+            var seconds = Math.floor((Date.now() - startedAt) / 1000);
+            statusEl.textContent = statusForElapsed(seconds);
+            elapsedEl.textContent = seconds > 3 ? seconds + " sekunder" : "";
+            if (seconds >= 60) {
+                fallbackEl.classList.add("emphasize");
+            }
+        }
+
+        function showReady() {
+            statusEl.textContent = "Klart! Skickar dig vidare...";
+        }
+
+        function pingOnce() {
+            return new Promise(function (resolve) {
+                var controller = new AbortController();
+                var timeoutId = setTimeout(function () {
+                    controller.abort();
+                }, ATTEMPT_TIMEOUT_MS);
+
+                fetch(TARGET_URL, { mode: "no-cors", cache: "no-store", signal: controller.signal })
+                    .then(function () {
+                        clearTimeout(timeoutId);
+                        resolve(true);
+                    })
+                    .catch(function () {
+                        clearTimeout(timeoutId);
+                        resolve(false);
+                    });
+            });
+        }
+
+        function wait(ms) {
+            return new Promise(function (resolve) {
+                setTimeout(resolve, ms);
+            });
+        }
+
+        async function waitAndRedirect() {
+            var tickTimer = setInterval(tickElapsed, 1000);
+            tickElapsed();
+
+            // Ingen övre gräns på antal försök - så länge fliken är öppen
+            // fortsätter den att försöka, med samma statustext-trappning som
+            // ovan. Länken "gå till sidan direkt" finns alltid kvar som
+            // manuell utväg om man inte vill vänta.
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                var ok = await pingOnce();
+                if (ok) {
+                    clearInterval(tickTimer);
+                    showReady();
+                    await wait(400);
+                    window.location.href = TARGET_URL;
+                    return;
+                }
+                await wait(RETRY_DELAY_MS);
+            }
+        }
+
+        waitAndRedirect();
+    </script>
+</body>
+</html>
