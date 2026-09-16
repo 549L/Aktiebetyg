@@ -39,7 +39,8 @@
 
         <section id="login-gate">
             <h2 id="login-gate-title">Logga in</h2>
-            <p class="subtitle">Du behöver ett konto för att använda Aktiebetyg.</p>
+            <p class="subtitle">Logga in för att skapa betygsskalor, betygsätta och chatta - eller bläddra vidare som gäst.</p>
+            <span id="login-gate-guest-notice" class="editor-error hidden"></span>
             <form id="login-form">
                 <label class="editor-field">
                     Användarnamn
@@ -53,6 +54,7 @@
                 <div class="login-gate-actions">
                     <button type="submit" id="login-submit-btn">Logga in</button>
                     <button type="button" id="login-toggle-btn" class="login-toggle-btn">Skapa konto istället</button>
+                    <button type="button" id="guest-mode-btn" class="login-toggle-btn">Fortsätt som gäst →</button>
                 </div>
             </form>
         </section>

@@ -763,6 +763,7 @@ function buildStarRating(rawId) {
         star.setAttribute("aria-label", `Betygsätt ${i} av 5 stjärnor`);
         star.addEventListener("click", async (e) => {
             e.stopPropagation();
+            if (!requireLogin("betygsätta en betygsskala")) return;
             try {
                 const res = await fetch(`/api/scales/${rawId}/rating`, {
                     method: "POST",
@@ -1115,6 +1116,7 @@ function buildInteractiveUserStars(username, rating) {
         star.textContent = "★";
         star.setAttribute("aria-label", `Betygsätt ${i} av 5 stjärnor`);
         star.addEventListener("click", async () => {
+            if (!requireLogin("betygsätta en användare")) return;
             try {
                 const res = await fetch(`/api/users/${encodeURIComponent(username)}/rating`, {
                     method: "POST",
@@ -1389,7 +1391,10 @@ function closeScaleEditor() {
     mainViewEl.classList.remove("hidden");
 }
 
-createScaleBtn.addEventListener("click", () => openScaleEditor(null));
+createScaleBtn.addEventListener("click", () => {
+    if (!requireLogin("skapa en egen betygsskala")) return;
+    openScaleEditor(null);
+});
 scaleEditorBack.addEventListener("click", closeScaleEditor);
 
 function currentSlotRows() {
@@ -1684,6 +1689,7 @@ document.addEventListener("click", (e) => {
 });
 
 scaleSaveBtn.addEventListener("click", async () => {
+    if (!requireLogin("spara en betygsskala")) return;
     const name = scaleNameInput.value.trim();
     scaleEditorError.classList.add("hidden");
 
@@ -1738,6 +1744,8 @@ const loginError = document.getElementById("login-error");
 const loginSubmitBtn = document.getElementById("login-submit-btn");
 const loginToggleBtn = document.getElementById("login-toggle-btn");
 const logoutBtn = document.getElementById("logout-btn");
+const guestModeBtn = document.getElementById("guest-mode-btn");
+const loginGateGuestNoticeEl = document.getElementById("login-gate-guest-notice");
 
 let authMode = "login"; // "login" | "register"
 let appInitialized = false;
@@ -1745,12 +1753,34 @@ let currentUsername = null;
 let currentAvatar = null;
 let currentAccentColor = null;
 let currentIsAdmin = false;
+// Gästläge: bläddra fritt (sök, analysera, se skalor/profiler/community/
+// triggers) utan konto - men allt som kräver ett användarnamn (skapa en
+// skala, rösta, skriva ett meddelande, ändra sin profil) är fortfarande
+// stängt. Se requireLogin() nedan, som alla sådana knappar/formulär
+// kollar mot innan de faktiskt gör något.
+let isGuest = false;
+
+// Kallas av alla knappar/formulär som kräver ett konto - visar
+// inloggningsvyn med en förklaring istället för att försöka anropet (som
+// ändå bara skulle få 401 från servern) om man är gäst. Returnerar true
+// om man FÅR gå vidare (dvs. inte gäst).
+function requireLogin(actionText) {
+    if (!isGuest) return true;
+    showLoggedOut();
+    loginGateGuestNoticeEl.textContent = `Logga in eller skapa ett konto för att ${actionText}.`;
+    loginGateGuestNoticeEl.classList.remove("hidden");
+    return false;
+}
 
 function renderAccountAvatar() {
     renderAvatarInto(accountAvatarEl, currentUsername, currentAvatar);
 }
 
 function goToOwnProfile() {
+    if (isGuest) {
+        requireLogin("se din profil");
+        return;
+    }
     if (currentUsername) openUserProfile(currentUsername);
 }
 
@@ -1891,6 +1921,7 @@ communitySearchInput.addEventListener("input", () => {
 });
 
 createRoomBtn.addEventListener("click", () => {
+    if (!requireLogin("skapa en ny chatt")) return;
     createRoomFormEl.classList.toggle("hidden");
     createRoomErrorEl.classList.add("hidden");
     if (!createRoomFormEl.classList.contains("hidden")) {
@@ -1906,6 +1937,7 @@ cancelRoomBtn.addEventListener("click", () => {
 });
 
 saveRoomBtn.addEventListener("click", async () => {
+    if (!requireLogin("skapa en ny chatt")) return;
     const name = newRoomNameInput.value.trim();
     const ticker = newRoomTickerInput.value.trim();
     createRoomErrorEl.classList.add("hidden");
@@ -2057,6 +2089,7 @@ chatRoomBackBtn.addEventListener("click", closeChatRoom);
 
 chatRoomForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!requireLogin("skriva i chatten")) return;
     const text = chatRoomInput.value.trim();
     if (!text || !currentRoomId) return;
 
@@ -2605,10 +2638,12 @@ function stopChatRoomPolling() {
 }
 
 function showLoggedOut() {
+    isGuest = false;
     currentUsername = null;
     currentAvatar = null;
     currentAccentColor = null;
     currentIsAdmin = false;
+    logoutBtn.textContent = "Logga ut";
     appContentEl.classList.add("hidden");
     accountBarEl.classList.add("hidden");
     loginGateEl.classList.remove("hidden");
@@ -2617,6 +2652,7 @@ function showLoggedOut() {
 }
 
 function showLoggedIn(account) {
+    isGuest = false;
     currentUsername = account.username;
     currentAvatar = account.avatar || null;
     currentAccentColor = account.accent_color || null;
@@ -2624,8 +2660,41 @@ function showLoggedIn(account) {
     applyAccentColor(currentAccentColor);
 
     loginGateEl.classList.add("hidden");
+    loginGateGuestNoticeEl.classList.add("hidden");
+    logoutBtn.textContent = "Logga ut";
     accountUsernameEl.textContent = account.username;
     renderAccountAvatar();
+    accountBarEl.classList.remove("hidden");
+    appContentEl.classList.remove("hidden");
+
+    if (!appInitialized) {
+        appInitialized = true;
+        loadTop10();
+        loadUsers();
+        loadScales();
+        loadCommunityRooms();
+        loadTriggersMiniPreview();
+    }
+    startCommunityPolling();
+}
+
+// Samma app-vy som showLoggedIn, men utan konto - allt som kräver
+// inloggning gated bakom requireLogin() istället för att bara döljas,
+// eftersom en gäst annars inte skulle förstå VARFÖR t.ex. "+ Skapa egen
+// betygsskala" inte gör något.
+function showGuestMode() {
+    isGuest = true;
+    currentUsername = null;
+    currentAvatar = null;
+    currentAccentColor = null;
+    currentIsAdmin = false;
+    applyAccentColor(null);
+
+    loginGateEl.classList.add("hidden");
+    loginGateGuestNoticeEl.classList.add("hidden");
+    accountUsernameEl.textContent = "Gäst";
+    renderAccountAvatar();
+    logoutBtn.textContent = "Logga in";
     accountBarEl.classList.remove("hidden");
     appContentEl.classList.remove("hidden");
 
@@ -2680,6 +2749,14 @@ loginForm.addEventListener("submit", async (e) => {
 });
 
 logoutBtn.addEventListener("click", async () => {
+    // Samma knapp återanvänds för gäster, bara med annan text ("Logga
+    // in") satt av showGuestMode() - då finns ingen session att logga ut
+    // från, så hoppa direkt till inloggningsvyn istället för att anropa
+    // /api/logout i onödan.
+    if (isGuest) {
+        showLoggedOut();
+        return;
+    }
     try {
         await fetch("/api/logout", { method: "POST" });
     } catch (err) {
@@ -2687,6 +2764,8 @@ logoutBtn.addEventListener("click", async () => {
     }
     showLoggedOut();
 });
+
+guestModeBtn.addEventListener("click", showGuestMode);
 
 (async function checkLoginOnLoad() {
     try {

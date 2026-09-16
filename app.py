@@ -20,10 +20,9 @@ app = Flask(__name__)
 # varje omstart - lokalt räcker en hårdkodad utvecklingsnyckel.
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-osaker-nyckel-andra-i-produktion")
 
-# Hela sidan kräver inloggning utom själva inloggnings-/registreringsflödet
-# och statiska filer (annars skulle inte ens inloggningsformuläret gå att
-# visa/stila). Se users_store.py för kontona - ett admin-konto ("549L")
-# skapas automatiskt.
+# Inloggnings-/registreringsflödet och statiska filer är alltid publika
+# (annars skulle inte ens inloggningsformuläret gå att visa/stila). Se
+# users_store.py för kontona - ett admin-konto ("549L") skapas automatiskt.
 _PUBLIC_ENDPOINTS = {"index", "login", "register", "me", "static"}
 
 
@@ -31,8 +30,15 @@ _PUBLIC_ENDPOINTS = {"index", "login", "register", "me", "static"}
 def _require_login():
     if request.endpoint in _PUBLIC_ENDPOINTS or request.endpoint is None:
         return None
+    # Gästläge: att LÄSA (GET) - söka, analysera, bläddra bland skalor/
+    # profiler/community/triggers - är öppet utan konto. Att SKRIVA något
+    # (skapa en skala, rösta, skriva ett meddelande, ändra sin egen
+    # profil o.s.v.) knyts alltid till ett användarnamn och kräver
+    # fortfarande inloggning - det är bara de icke-GET-anropen nedan.
+    if request.method in ("GET", "HEAD"):
+        return None
     if not session.get("username"):
-        return jsonify({"error": "Du måste logga in för att använda Aktiebetyg."}), 401
+        return jsonify({"error": "Du måste logga in för att göra det här."}), 401
     return None
 
 
