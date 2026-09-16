@@ -1081,7 +1081,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     .top-panels { grid-template-columns: 1fr; }
 }
 
-#top10, #users-panel, #community-panel, .triggers-launcher {
+#top10, #users-panel, #community-panel, #triggers-panel {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -1100,32 +1100,39 @@ input[type="range"].weight-slider::-moz-range-thumb {
     .side-panels { grid-template-columns: 1fr; }
 }
 
+/* CSS grid sträcker annars rutan till samma höjd som Community i
+   .side-panels om Community råkar vara högre - align-self:start gör att
+   Triggers-rutan istället alltid håller sin egen, kompakta höjd (ungefär
+   som de tre rutorna i .top-panels ovanför), oavsett hur hög Community
+   är för stunden. */
+#triggers-panel {
+    align-self: start;
+}
+
+/* Själva knappen (tabell + CTA) som öppnar hela tidslinjen - bara ett
+   osynligt klickbart lager inne i .panel-body nu, ingen egen bakgrund/
+   kant längre (det ligger på #triggers-panel istället, som övriga
+   rutor). Panel-header med sin egna ihopfällningsknapp ligger UTANFÖR
+   den här knappen, som ett syskon - inga nästlade knappar. */
 .triggers-launcher {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* CSS grid sträcker annars rutan till samma höjd som Community i
-       .side-panels om Community råkar vara högre - align-self:start gör
-       att Triggers-rutan istället alltid håller sin egen, kompakta höjd
-       (ungefär som de tre rutorna i .top-panels ovanför), oavsett hur
-       hög Community är för stunden. */
-    align-self: start;
     gap: 8px;
     width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
     text-align: left;
     color: var(--text);
     cursor: pointer;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    border-radius: 8px;
+    transition: opacity 0.15s ease;
 }
 
 .triggers-launcher:hover {
-    border-color: var(--accent);
+    opacity: 0.85;
     filter: none;
-    transform: translateY(-2px);
-}
-
-.triggers-launcher h3 {
-    margin: 0;
 }
 
 /* Liten tabell inne i själva rutan på hemskärmen - alla bolag som finns
@@ -1701,7 +1708,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin: 0 0 12px;
 }
 
-#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3, #community-panel .panel-header h3 {
+#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3, #community-panel .panel-header h3, #triggers-panel .panel-header h3 {
     margin: 0;
 }
 

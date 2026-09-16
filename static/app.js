@@ -614,8 +614,8 @@ const BUILTIN_SCALES = [
 
 // Listan visar bara de MAX_VISIBLE_SCALES högst rankade skalorna (obetygsatta
 // sist) - sökrutan går igenom ALLA skalor utan den gränsen, så en skala som
-// inte råkar ligga i topp-5 ändå går att hitta och välja.
-const MAX_VISIBLE_SCALES = 5;
+// inte råkar ligga i topp-3 ändå går att hitta och välja.
+const MAX_VISIBLE_SCALES = 3;
 
 let currentScaleId = "default";
 let customScales = [];
@@ -1809,6 +1809,11 @@ async function loadCommunityRooms() {
     renderCommunityRoomsList();
 }
 
+// Samma mönster som MAX_VISIBLE_SCALES - utan sökord visas bara de tre
+// första (General överst, sen senast aktiva) för en kort, städad
+// standardlista. Sökrutan går igenom ALLA rum utan den gränsen.
+const MAX_VISIBLE_ROOMS = 3;
+
 function renderCommunityRoomsList() {
     communityRoomsListEl.innerHTML = "";
     const q = communitySearchQuery.trim().toLowerCase();
@@ -1818,7 +1823,7 @@ function renderCommunityRoomsList() {
             (r.ticker && r.ticker.toLowerCase().includes(q)) ||
             (r.ticker && communitySearchTickerMatches.has(r.ticker))
         )
-        : communityRooms;
+        : communityRooms.slice(0, MAX_VISIBLE_ROOMS);
 
     if (rooms.length === 0) {
         const li = document.createElement("li");

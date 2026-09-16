@@ -165,7 +165,7 @@ def analyze(ticker):
 
 @app.route("/api/recent")
 def recent():
-    return jsonify(recent_n(session.get("username"), 10))
+    return jsonify(recent_n(session.get("username"), 5))
 
 
 @app.route("/api/metric-catalog")
@@ -279,7 +279,7 @@ def users_search():
     rows.sort(key=lambda u: (u["rating"]["average"] is None, -(u["rating"]["average"] or 0), u["username"].lower()))
 
     if not query:
-        rows = rows[:5]
+        rows = rows[:3]
     return jsonify(rows)
 
 

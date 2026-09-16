@@ -136,15 +136,22 @@
                 </div>
             </section>
 
-            <button type="button" id="triggers-launcher" class="triggers-launcher">
-                <h3>📈 Triggers tidslinjen</h3>
-                <div class="triggers-mini-table-wrap">
-                    <table class="triggers-mini-table">
-                        <tbody id="triggers-mini-table-body"></tbody>
-                    </table>
+            <section id="triggers-panel">
+                <div class="panel-header">
+                    <h3>📈 Triggers tidslinjen</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Triggers tidslinjen">−</button>
                 </div>
-                <span class="triggers-launcher-cta">Öppna tidslinjen →</span>
-            </button>
+                <div class="panel-body">
+                    <button type="button" id="triggers-launcher" class="triggers-launcher">
+                        <div class="triggers-mini-table-wrap">
+                            <table class="triggers-mini-table">
+                                <tbody id="triggers-mini-table-body"></tbody>
+                            </table>
+                        </div>
+                        <span class="triggers-launcher-cta">Öppna tidslinjen →</span>
+                    </button>
+                </div>
+            </section>
         </div>
 
         <div id="status"></div>
