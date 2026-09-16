@@ -2264,6 +2264,11 @@ function renderTriggersMiniPreview() {
         companyTd.appendChild(tickerEl);
         tr.appendChild(companyTd);
 
+        const dateTd = document.createElement("td");
+        dateTd.className = "triggers-mini-table-date";
+        dateTd.textContent = new Date(event.date * 1000).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+        tr.appendChild(dateTd);
+
         const impactTd = document.createElement("td");
         impactTd.className = "triggers-mini-table-impact";
         const downEl = document.createElement("span");

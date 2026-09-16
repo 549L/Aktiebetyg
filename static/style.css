@@ -1180,7 +1180,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
 }
 
 .triggers-mini-table-company {
-    width: 60%;
+    width: 46%;
     color: var(--text);
     font-weight: 600;
     overflow: hidden;
@@ -1193,8 +1193,15 @@ input[type="range"].weight-slider::-moz-range-thumb {
     font-weight: 400;
 }
 
+.triggers-mini-table-date {
+    width: 24%;
+    color: var(--muted);
+    font-weight: 400;
+    white-space: nowrap;
+}
+
 .triggers-mini-table-impact {
-    width: 40%;
+    width: 30%;
     text-align: right;
     font-weight: 700;
     white-space: nowrap;
