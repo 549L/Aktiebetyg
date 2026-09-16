@@ -934,6 +934,9 @@ const userProfileColorControlsEl = document.getElementById("user-profile-color-c
 const userProfileFeedbackSectionEl = document.getElementById("user-profile-feedback-section");
 const userProfileFeedbackListEl = document.getElementById("user-profile-feedback-list");
 const userProfileFeedbackEmptyEl = document.getElementById("user-profile-feedback-empty");
+const feedbackChartWrapEl = document.getElementById("feedback-chart-wrap");
+const feedbackChartEl = document.getElementById("feedback-chart");
+const feedbackChartLegendEl = document.getElementById("feedback-chart-legend");
 
 // Egen accentfärg - ersätter --accent (se style.css) genom hela sidan när
 // man är inloggad. Enda stället man kan ändra den är i sin egen profil -
@@ -1118,10 +1121,13 @@ async function renderOwnFeedbackSection(showFeedback) {
     if (!showFeedback) return;
 
     userProfileFeedbackListEl.innerHTML = "";
+    feedbackChartWrapEl.classList.add("hidden");
     try {
         const res = await fetch("/api/feedback");
         if (!res.ok) return;
         const entries = await res.json();
+
+        renderFeedbackChart(entries);
 
         if (entries.length === 0) {
             userProfileFeedbackEmptyEl.classList.remove("hidden");
@@ -2353,6 +2359,15 @@ const FEEDBACK_QUICK_OPTIONS = [
     "Sidan kändes långsam.",
 ];
 
+// Samma tre ämnen som cirkeldiagrammet i 549L:s profil bryter ner
+// inskickad feedback på (se renderFeedbackChart längre ner) - en färg
+// per ämne, återanvänds i både diagrammet och dess legend.
+const FEEDBACK_CATEGORY_COLORS = {
+    "Jag hittade en bugg.": "var(--red)",
+    "Jag har förslag på en ny funktion.": "var(--green)",
+    "Sidan kändes långsam.": "var(--yellow)",
+};
+
 const feedbackQuickOptionsEl = document.getElementById("feedback-quick-options");
 const feedbackExplainEl = document.getElementById("feedback-explain");
 const feedbackExplainLabelEl = document.getElementById("feedback-explain-label");
@@ -2383,7 +2398,7 @@ function selectFeedbackCategory(category, btn) {
     feedbackTextEl.focus();
 }
 
-async function sendFeedback(text) {
+async function sendFeedback(text, category) {
     if (!requireLogin("skicka feedback")) return;
 
     feedbackStatusEl.classList.remove("hidden", "feedback-success");
@@ -2393,7 +2408,7 @@ async function sendFeedback(text) {
         const res = await fetch("/api/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ text, category }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -2419,8 +2434,83 @@ feedbackSendBtn.addEventListener("click", () => {
         return;
     }
     const text = selectedFeedbackCategory ? `${selectedFeedbackCategory} ${explanation}` : explanation;
-    sendFeedback(text);
+    sendFeedback(text, selectedFeedbackCategory);
 });
+
+// Cirkeldiagram över hur många gånger varje ämnesknapp faktiskt skickats
+// in (inte bara klickats i - se selectFeedbackCategory ovan, en klickad
+// men aldrig skickad kategori räknas inte) - bara synligt på 549L:s egen
+// profil (renderOwnFeedbackSection), tänkt att visa vad som är värt att
+// lägga utvecklingstid på. Handritad SVG, ingen extern chart-bibliotek -
+// samma mönster som prislinjediagrammet ovan i filen.
+function renderFeedbackChart(entries) {
+    const counts = FEEDBACK_QUICK_OPTIONS.map((category) => ({
+        category,
+        count: entries.filter((e) => e.category === category).length,
+    }));
+    const total = counts.reduce((sum, c) => sum + c.count, 0);
+
+    feedbackChartWrapEl.classList.toggle("hidden", total === 0);
+    if (total === 0) return;
+
+    feedbackChartEl.innerHTML = "";
+    feedbackChartEl.appendChild(buildFeedbackPieSvg(counts, total));
+
+    feedbackChartLegendEl.innerHTML = "";
+    counts.forEach(({ category, count }) => {
+        const li = document.createElement("li");
+
+        const swatch = document.createElement("span");
+        swatch.className = "feedback-chart-swatch";
+        swatch.style.background = FEEDBACK_CATEGORY_COLORS[category];
+        li.appendChild(swatch);
+
+        const label = document.createElement("span");
+        label.textContent = `${category} (${count})`;
+        li.appendChild(label);
+
+        feedbackChartLegendEl.appendChild(li);
+    });
+}
+
+function buildFeedbackPieSvg(counts, total) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 200 200");
+    svg.setAttribute("width", "160");
+    svg.setAttribute("height", "160");
+
+    const cx = 100;
+    const cy = 100;
+    const r = 90;
+    let angle = -Math.PI / 2;
+
+    counts.forEach(({ category, count }) => {
+        if (count === 0) return;
+        const fraction = count / total;
+        const nextAngle = angle + fraction * Math.PI * 2;
+
+        const path = document.createElementNS(svgNS, "path");
+        if (fraction >= 0.999) {
+            // En enda kategori har alla röster - en vanlig "M ... A ... Z"-båge
+            // blir degenererad vid exakt 360 grader, rita två halvcirklar istället.
+            path.setAttribute("d", `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`);
+        } else {
+            const x1 = cx + r * Math.cos(angle);
+            const y1 = cy + r * Math.sin(angle);
+            const x2 = cx + r * Math.cos(nextAngle);
+            const y2 = cy + r * Math.sin(nextAngle);
+            const largeArc = fraction > 0.5 ? 1 : 0;
+            path.setAttribute("d", `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+        }
+        path.style.fill = FEEDBACK_CATEGORY_COLORS[category];
+        svg.appendChild(path);
+
+        angle = nextAngle;
+    });
+
+    return svg;
+}
 
 // Baslinjen ligger mitt i rutan - hälften av händelserna (växlande i
 // datumordning) får sin vertikala linje uppåt, hälften nedåt, så man kan

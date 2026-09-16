@@ -43,9 +43,14 @@ def _save(entries):
         json.dump(entries, f, ensure_ascii=False, indent=2)
 
 
-def add_feedback(text, username):
+def add_feedback(text, username, category=None):
     """Kastar ValueError (svensk text, tänkt att visas direkt för
-    användaren) om texten är tom eller orimligt lång."""
+    användaren) om texten är tom eller orimligt lång. `category` är vilken
+    av de tre ämnesknapparna (se FEEDBACK_QUICK_OPTIONS i app.js) som
+    valdes innan förklaringen skrevs - sparas rått, oskickat/ogiltigt
+    värde blir bara None, så cirkeldiagrammet i 549L:s profil (se
+    /api/feedback i app.py) räknar det som "annat" istället för att
+    krascha på en okänd kategori."""
     text = (text or "").strip()
     if not text:
         raise ValueError("Skriv något innan du skickar.")
@@ -56,6 +61,7 @@ def add_feedback(text, username):
     entries.append({
         "id": uuid.uuid4().hex,
         "text": text,
+        "category": (category or "").strip() or None,
         "username": username,
         "created_at": time.time(),
     })

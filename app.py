@@ -204,7 +204,7 @@ def feedback():
     if request.method == "POST":
         body = request.get_json(silent=True) or {}
         try:
-            feedback_store.add_feedback(body.get("text"), session.get("username"))
+            feedback_store.add_feedback(body.get("text"), session.get("username"), body.get("category"))
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         return jsonify({"ok": True}), 201

@@ -161,7 +161,6 @@
                     <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Feedback">−</button>
                 </div>
                 <div class="panel-body">
-                    <p class="feedback-intro">Vad handlar din feedback om?</p>
                     <div id="feedback-quick-options" class="feedback-quick-options"></div>
                     <div id="feedback-explain" class="hidden">
                         <p id="feedback-explain-label" class="feedback-explain-label"></p>
@@ -318,7 +317,13 @@
 
             <div id="user-profile-feedback-section" class="hidden">
                 <h3>Feedback från besökare</h3>
-                <p class="muted">Bara du ser den här listan.</p>
+                <p class="muted">Bara du ser det här.</p>
+
+                <div id="feedback-chart-wrap" class="hidden">
+                    <div id="feedback-chart"></div>
+                    <ul id="feedback-chart-legend" class="feedback-chart-legend"></ul>
+                </div>
+
                 <ul id="user-profile-feedback-list" class="feedback-list"></ul>
                 <p id="user-profile-feedback-empty" class="muted hidden">Ingen feedback än.</p>
             </div>

@@ -1231,15 +1231,9 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin-top: auto;
 }
 
-/* Feedback-rutan - bara ett SKICKA-formulär (fem klickbara vanliga
-   svar + en egen textruta). Att LÄSA inskickad feedback finns bara i
+/* Feedback-rutan - tre ämnesknappar som öppnar en skriv-ruta (se
+   #feedback-explain i app.js). Att LÄSA inskickad feedback finns bara i
    549L:s egen profil, se .feedback-list längre ner. */
-.feedback-intro {
-    color: var(--muted);
-    font-size: 0.85rem;
-    margin: 0 0 14px;
-}
-
 .feedback-quick-options {
     display: flex;
     flex-direction: column;
@@ -1306,6 +1300,40 @@ input[type="range"].weight-slider::-moz-range-thumb {
 
 #feedback-status.feedback-success {
     color: var(--accent);
+}
+
+/* Cirkeldiagram över hur många gånger varje ämnesknapp skickats in - bara
+   synligt på 549L:s egen profil (se renderFeedbackChart i app.js). */
+#feedback-chart-wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 16px 0 24px;
+}
+
+.feedback-chart-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feedback-chart-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+.feedback-chart-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
 }
 
 /* Feedbacklistan - bara synlig på 549L:s egen profil (se
