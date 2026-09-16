@@ -161,10 +161,13 @@
                     <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Feedback">−</button>
                 </div>
                 <div class="panel-body">
-                    <p class="feedback-intro">Har du en idé eller hittat något som inte fungerar? Skicka det direkt hit.</p>
+                    <p class="feedback-intro">Vad handlar din feedback om?</p>
                     <div id="feedback-quick-options" class="feedback-quick-options"></div>
-                    <textarea id="feedback-text" placeholder="Eller skriv din egen feedback..." maxlength="1000"></textarea>
-                    <button type="button" id="feedback-send-btn">Skicka feedback</button>
+                    <div id="feedback-explain" class="hidden">
+                        <p id="feedback-explain-label" class="feedback-explain-label"></p>
+                        <textarea id="feedback-text" placeholder="Berätta mer..." maxlength="1000"></textarea>
+                        <button type="button" id="feedback-send-btn">Skicka feedback</button>
+                    </div>
                     <span id="feedback-status" class="hidden"></span>
                 </div>
             </section>

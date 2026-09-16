@@ -1264,6 +1264,21 @@ input[type="range"].weight-slider::-moz-range-thumb {
     filter: none;
 }
 
+/* Markerar vilket ämne som valts - skriv-rutan under (#feedback-explain)
+   är ändå den tydligaste signalen, det här är bara ett extra visuellt
+   spår så man ser vilken knapp man klickade på. */
+.feedback-quick-btn.active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+
+.feedback-explain-label {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin: 0 0 8px;
+}
+
 #feedback-text {
     width: 100%;
     min-height: 70px;

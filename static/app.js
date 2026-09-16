@@ -2339,29 +2339,49 @@ function renderTriggersMiniPreview() {
 // renderOwnFeedbackSection nedan) - servern (app.py) nekar GET /api/feedback
 // för alla andra ändå, det här är bara för att inte visa en läsvy som
 // skulle misslyckas för alla utom en.
+//
+// De tre knapparna väljer bara ÄMNE - klicket skickar inget själv (en ren
+// "bugg"-etikett utan förklaring vore inte till stor hjälp). Att klicka en
+// knapp öppnar istället skriv-rutan, förifylld med ämnet som etikett, och
+// man måste skriva en egen förklaring där innan "Skicka feedback" faktiskt
+// skickar något.
 // ---------------------------------------------------------------------------
 
 const FEEDBACK_QUICK_OPTIONS = [
-    "Jag gillar sidan!",
     "Jag hittade en bugg.",
-    "Jag har ett förslag på en ny funktion.",
+    "Jag har förslag på en ny funktion.",
     "Sidan kändes långsam.",
-    "Jag förstod inte hur en funktion fungerar.",
 ];
 
 const feedbackQuickOptionsEl = document.getElementById("feedback-quick-options");
+const feedbackExplainEl = document.getElementById("feedback-explain");
+const feedbackExplainLabelEl = document.getElementById("feedback-explain-label");
 const feedbackTextEl = document.getElementById("feedback-text");
 const feedbackSendBtn = document.getElementById("feedback-send-btn");
 const feedbackStatusEl = document.getElementById("feedback-status");
 
-FEEDBACK_QUICK_OPTIONS.forEach((text) => {
+let selectedFeedbackCategory = null;
+
+FEEDBACK_QUICK_OPTIONS.forEach((category) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "feedback-quick-btn";
-    btn.textContent = text;
-    btn.addEventListener("click", () => sendFeedback(text));
+    btn.textContent = category;
+    btn.addEventListener("click", () => selectFeedbackCategory(category, btn));
     feedbackQuickOptionsEl.appendChild(btn);
 });
+
+function selectFeedbackCategory(category, btn) {
+    selectedFeedbackCategory = category;
+    feedbackQuickOptionsEl.querySelectorAll(".feedback-quick-btn").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+    });
+    feedbackExplainLabelEl.textContent = `${category} Berätta mer:`;
+    feedbackExplainEl.classList.remove("hidden");
+    feedbackStatusEl.classList.add("hidden");
+    feedbackTextEl.value = "";
+    feedbackTextEl.focus();
+}
 
 async function sendFeedback(text) {
     if (!requireLogin("skicka feedback")) return;
@@ -2383,14 +2403,22 @@ async function sendFeedback(text) {
         feedbackTextEl.value = "";
         feedbackStatusEl.textContent = "Tack för din feedback!";
         feedbackStatusEl.classList.add("feedback-success");
+        selectedFeedbackCategory = null;
+        feedbackQuickOptionsEl.querySelectorAll(".feedback-quick-btn").forEach((b) => b.classList.remove("active"));
+        feedbackExplainEl.classList.add("hidden");
     } catch (err) {
         feedbackStatusEl.textContent = "Nätverksfel: kunde inte nå servern.";
     }
 }
 
 feedbackSendBtn.addEventListener("click", () => {
-    const text = feedbackTextEl.value.trim();
-    if (!text) return;
+    const explanation = feedbackTextEl.value.trim();
+    if (!explanation) {
+        feedbackStatusEl.classList.remove("hidden", "feedback-success");
+        feedbackStatusEl.textContent = "Beskriv gärna lite mer innan du skickar.";
+        return;
+    }
+    const text = selectedFeedbackCategory ? `${selectedFeedbackCategory} ${explanation}` : explanation;
     sendFeedback(text);
 });
 
