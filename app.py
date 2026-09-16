@@ -210,10 +210,12 @@ def feedback():
         return jsonify({"ok": True}), 201
 
     # GET är annars öppet även för gäster (se _require_login), men
-    # feedback är en brevlåda bara adminkontot (549L) ska kunna läsa -
-    # kollas därför explicit här istället för att förlita sig på hooken.
-    account = users_store.get_user(session.get("username")) if session.get("username") else None
-    if not account or not account.get("is_admin"):
+    # feedback är en brevlåda bara 549L (och ingen annan, oavsett
+    # is_admin-flaggan) ska kunna läsa - kollas därför explicit här
+    # istället för att förlita sig på hooken. Samma mönster som
+    # _BUILTIN_SCALES_FOR_549L nedan använder för att peka ut exakt det
+    # kontot.
+    if session.get("username") != "549L":
         return jsonify({"error": "Du har inte behörighet att se det här."}), 403
     return jsonify(feedback_store.list_feedback())
 

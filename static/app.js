@@ -1222,7 +1222,11 @@ async function openUserProfile(username) {
         const isOwnProfile = Boolean(me.username) && account.username === me.username;
         renderOwnAvatarControls(isOwnProfile, isOwnProfile && Boolean(account.avatar));
         userProfileAvatarErrorEl.classList.add("hidden");
-        renderOwnFeedbackSection(isOwnProfile && Boolean(me.is_admin));
+        // Bara 549L (och ingen annan, oavsett is_admin-flaggan) ska se
+        // feedbacken - servern nekar GET /api/feedback för alla andra
+        // ändå (se app.py), det här är bara för att inte visa en läsvy
+        // som ändå skulle misslyckas för alla utom 549L.
+        renderOwnFeedbackSection(isOwnProfile && me.username === "549L");
 
         userProfileBioEl.textContent = account.bio || "Ingen biografi än.";
         renderOwnBioControls(isOwnProfile, account.bio || "");
