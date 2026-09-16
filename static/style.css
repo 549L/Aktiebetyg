@@ -1081,7 +1081,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     .top-panels { grid-template-columns: 1fr; }
 }
 
-#top10, #users-panel, #community-panel, #triggers-panel {
+#top10, #users-panel, #community-panel, #triggers-panel, #feedback-panel {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -1096,16 +1096,29 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin-bottom: 24px;
 }
 
+/* Feedback-rutan ligger på en egen, full bredd rad under Community/
+   Triggers tills det finns gott om plats (samma >=1000px-brytpunkt som
+   .top-panels redan använder för sin tredje kolumn) - då får den plats
+   bredvid dem istället, som en tredje kolumn. */
+#feedback-panel {
+    grid-column: 1 / -1;
+}
+
+@media (min-width: 1000px) {
+    .side-panels { grid-template-columns: 1fr 1fr 1fr; }
+    #feedback-panel { grid-column: auto; }
+}
+
 @media (max-width: 600px) {
     .side-panels { grid-template-columns: 1fr; }
 }
 
 /* CSS grid sträcker annars rutan till samma höjd som Community i
    .side-panels om Community råkar vara högre - align-self:start gör att
-   Triggers-rutan istället alltid håller sin egen, kompakta höjd (ungefär
-   som de tre rutorna i .top-panels ovanför), oavsett hur hög Community
-   är för stunden. */
-#triggers-panel {
+   Triggers-/Feedback-rutorna istället alltid håller sin egen, kompakta
+   höjd (ungefär som de tre rutorna i .top-panels ovanför), oavsett hur
+   hög Community är för stunden. */
+#triggers-panel, #feedback-panel {
     align-self: start;
 }
 
@@ -1216,6 +1229,99 @@ input[type="range"].weight-slider::-moz-range-thumb {
     font-weight: 600;
     font-size: 0.9rem;
     margin-top: auto;
+}
+
+/* Feedback-rutan - bara ett SKICKA-formulär (fem klickbara vanliga
+   svar + en egen textruta). Att LÄSA inskickad feedback finns bara i
+   549L:s egen profil, se .feedback-list längre ner. */
+.feedback-intro {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0 0 14px;
+}
+
+.feedback-quick-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.feedback-quick-btn {
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.feedback-quick-btn:hover {
+    border-color: var(--accent);
+    filter: none;
+}
+
+#feedback-text {
+    width: 100%;
+    min-height: 70px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 10px;
+}
+
+#feedback-send-btn {
+    width: 100%;
+}
+
+#feedback-status {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--red);
+}
+
+#feedback-status.feedback-success {
+    color: var(--accent);
+}
+
+/* Feedbacklistan - bara synlig på 549L:s egen profil (se
+   renderOwnFeedbackSection i app.js). */
+.feedback-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.feedback-list li {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feedback-list-text {
+    color: var(--text);
+    white-space: pre-wrap;
+}
+
+.feedback-list-meta {
+    color: var(--muted);
+    font-size: 0.8rem;
 }
 
 #community-search {
@@ -1715,7 +1821,7 @@ input[type="range"].weight-slider::-moz-range-thumb {
     margin: 0 0 12px;
 }
 
-#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3, #community-panel .panel-header h3, #triggers-panel .panel-header h3 {
+#top10 .panel-header h3, #users-panel .panel-header h3, #scales-panel .panel-header h3, #community-panel .panel-header h3, #triggers-panel .panel-header h3, #feedback-panel .panel-header h3 {
     margin: 0;
 }
 

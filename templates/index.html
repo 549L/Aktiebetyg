@@ -154,6 +154,20 @@
                     </button>
                 </div>
             </section>
+
+            <section id="feedback-panel">
+                <div class="panel-header">
+                    <h3>💬 Feedback</h3>
+                    <button type="button" class="panel-toggle-btn" aria-expanded="true" aria-label="Dölj Feedback">−</button>
+                </div>
+                <div class="panel-body">
+                    <p class="feedback-intro">Har du en idé eller hittat något som inte fungerar? Skicka det direkt hit.</p>
+                    <div id="feedback-quick-options" class="feedback-quick-options"></div>
+                    <textarea id="feedback-text" placeholder="Eller skriv din egen feedback..." maxlength="1000"></textarea>
+                    <button type="button" id="feedback-send-btn">Skicka feedback</button>
+                    <span id="feedback-status" class="hidden"></span>
+                </div>
+            </section>
         </div>
 
         <div id="status"></div>
@@ -298,6 +312,13 @@
             <h3>Betygsskalor skapade av användaren</h3>
             <ul id="user-profile-scales" class="scale-list-plain"></ul>
             <p id="user-profile-scales-empty" class="muted hidden">Inga egna betygsskalor än.</p>
+
+            <div id="user-profile-feedback-section" class="hidden">
+                <h3>Feedback från besökare</h3>
+                <p class="muted">Bara du ser den här listan.</p>
+                <ul id="user-profile-feedback-list" class="feedback-list"></ul>
+                <p id="user-profile-feedback-empty" class="muted hidden">Ingen feedback än.</p>
+            </div>
         </section>
 
         <section id="chat-room" class="hidden">

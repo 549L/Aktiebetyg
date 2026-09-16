@@ -931,6 +931,9 @@ const userProfileBioEl = document.getElementById("user-profile-bio");
 const userProfileBioControlsEl = document.getElementById("user-profile-bio-controls");
 const userProfileColorSectionEl = document.getElementById("user-profile-color-section");
 const userProfileColorControlsEl = document.getElementById("user-profile-color-controls");
+const userProfileFeedbackSectionEl = document.getElementById("user-profile-feedback-section");
+const userProfileFeedbackListEl = document.getElementById("user-profile-feedback-list");
+const userProfileFeedbackEmptyEl = document.getElementById("user-profile-feedback-empty");
 
 // Egen accentfärg - ersätter --accent (se style.css) genom hela sidan när
 // man är inloggad. Enda stället man kan ändra den är i sin egen profil -
@@ -1104,6 +1107,48 @@ function formatAccountDate(timestamp) {
     return new Date(timestamp * 1000).toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// Feedback-listan visas bara på 549L:s (adminkontots) EGEN profil - byggs
+// (och rivs ned) i DOM:en på samma sätt som avatar/biografi/färg-
+// kontrollerna ovan, så den aldrig kan hamna kvar synlig av misstag på
+// någon annans profil. Servern nekar ändå GET /api/feedback för alla
+// andra (se app.py), det här är bara för att slippa ett onödigt
+// 403-anrop/en tom ruta för alla utom en.
+async function renderOwnFeedbackSection(showFeedback) {
+    userProfileFeedbackSectionEl.classList.toggle("hidden", !showFeedback);
+    if (!showFeedback) return;
+
+    userProfileFeedbackListEl.innerHTML = "";
+    try {
+        const res = await fetch("/api/feedback");
+        if (!res.ok) return;
+        const entries = await res.json();
+
+        if (entries.length === 0) {
+            userProfileFeedbackEmptyEl.classList.remove("hidden");
+            return;
+        }
+        userProfileFeedbackEmptyEl.classList.add("hidden");
+
+        entries.forEach((entry) => {
+            const li = document.createElement("li");
+
+            const textEl = document.createElement("span");
+            textEl.className = "feedback-list-text";
+            textEl.textContent = entry.text;
+            li.appendChild(textEl);
+
+            const metaEl = document.createElement("span");
+            metaEl.className = "feedback-list-meta";
+            metaEl.textContent = `${entry.username} · ${formatAccountDate(entry.created_at)}`;
+            li.appendChild(metaEl);
+
+            userProfileFeedbackListEl.appendChild(li);
+        });
+    } catch (err) {
+        // Feedbacklistan är en extra funktion - misslyckas hämtningen visas bara inget.
+    }
+}
+
 function buildInteractiveUserStars(username, rating) {
     const wrap = document.createElement("div");
     wrap.className = "star-rating";
@@ -1149,6 +1194,7 @@ async function openUserProfile(username) {
     renderOwnAvatarControls(false, false);
     renderOwnBioControls(false, "");
     renderOwnColorControls(false, null);
+    renderOwnFeedbackSection(false);
 
     try {
         const [profileRes, meRes] = await Promise.all([
@@ -1170,6 +1216,7 @@ async function openUserProfile(username) {
         const isOwnProfile = Boolean(me.username) && account.username === me.username;
         renderOwnAvatarControls(isOwnProfile, isOwnProfile && Boolean(account.avatar));
         userProfileAvatarErrorEl.classList.add("hidden");
+        renderOwnFeedbackSection(isOwnProfile && Boolean(me.is_admin));
 
         userProfileBioEl.textContent = account.bio || "Ingen biografi än.";
         renderOwnBioControls(isOwnProfile, account.bio || "");
@@ -2284,6 +2331,68 @@ function renderTriggersMiniPreview() {
         body.appendChild(tr);
     });
 }
+
+// ---------------------------------------------------------------------------
+// Feedback - rutan bredvid Triggers tidslinjen där alla kan skicka in
+// feedback till adminkontot (549L). Bara SKICKA-formuläret finns här; att
+// LÄSA inskickad feedback går bara i 549L:s egen profil (se
+// renderOwnFeedbackSection nedan) - servern (app.py) nekar GET /api/feedback
+// för alla andra ändå, det här är bara för att inte visa en läsvy som
+// skulle misslyckas för alla utom en.
+// ---------------------------------------------------------------------------
+
+const FEEDBACK_QUICK_OPTIONS = [
+    "Jag gillar sidan!",
+    "Jag hittade en bugg.",
+    "Jag har ett förslag på en ny funktion.",
+    "Sidan kändes långsam.",
+    "Jag förstod inte hur en funktion fungerar.",
+];
+
+const feedbackQuickOptionsEl = document.getElementById("feedback-quick-options");
+const feedbackTextEl = document.getElementById("feedback-text");
+const feedbackSendBtn = document.getElementById("feedback-send-btn");
+const feedbackStatusEl = document.getElementById("feedback-status");
+
+FEEDBACK_QUICK_OPTIONS.forEach((text) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "feedback-quick-btn";
+    btn.textContent = text;
+    btn.addEventListener("click", () => sendFeedback(text));
+    feedbackQuickOptionsEl.appendChild(btn);
+});
+
+async function sendFeedback(text) {
+    if (!requireLogin("skicka feedback")) return;
+
+    feedbackStatusEl.classList.remove("hidden", "feedback-success");
+    feedbackStatusEl.textContent = "";
+
+    try {
+        const res = await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            feedbackStatusEl.textContent = data.error || "Kunde inte skicka feedbacken.";
+            return;
+        }
+        feedbackTextEl.value = "";
+        feedbackStatusEl.textContent = "Tack för din feedback!";
+        feedbackStatusEl.classList.add("feedback-success");
+    } catch (err) {
+        feedbackStatusEl.textContent = "Nätverksfel: kunde inte nå servern.";
+    }
+}
+
+feedbackSendBtn.addEventListener("click", () => {
+    const text = feedbackTextEl.value.trim();
+    if (!text) return;
+    sendFeedback(text);
+});
 
 // Baslinjen ligger mitt i rutan - hälften av händelserna (växlande i
 // datumordning) får sin vertikala linje uppåt, hälften nedåt, så man kan

@@ -14,6 +14,7 @@ from history_store import record_result, recent_n
 from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
 from triggers_data import TRIGGERS_DISCLAIMER
 from triggers_store import get_triggers
+import feedback_store
 
 app = Flask(__name__)
 # Krävs för att signera inloggningskakan (Flask-sessionen). Sätt
@@ -196,6 +197,25 @@ def triggers():
     window_end = now + 60 * 86400
     upcoming = [t for t in get_triggers() if now <= t["date"] <= window_end]
     return jsonify({"disclaimer": TRIGGERS_DISCLAIMER, "triggers": upcoming})
+
+
+@app.route("/api/feedback", methods=["GET", "POST"])
+def feedback():
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        try:
+            feedback_store.add_feedback(body.get("text"), session.get("username"))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"ok": True}), 201
+
+    # GET är annars öppet även för gäster (se _require_login), men
+    # feedback är en brevlåda bara adminkontot (549L) ska kunna läsa -
+    # kollas därför explicit här istället för att förlita sig på hooken.
+    account = users_store.get_user(session.get("username")) if session.get("username") else None
+    if not account or not account.get("is_admin"):
+        return jsonify({"error": "Du har inte behörighet att se det här."}), 403
+    return jsonify(feedback_store.list_feedback())
 
 
 @app.route("/api/scales", methods=["GET", "POST"])
