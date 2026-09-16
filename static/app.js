@@ -2251,7 +2251,7 @@ function renderTriggersMiniPreview() {
     if (!body) return;
     body.innerHTML = "";
 
-    const events = triggersData.slice().sort((a, b) => a.rank - b.rank);
+    const events = triggersData.slice().sort((a, b) => a.date - b.date);
     events.forEach((event) => {
         const tr = document.createElement("tr");
 

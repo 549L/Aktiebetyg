@@ -16,14 +16,17 @@ alltid med till frontend och visas synligt ovanför tidslinjen av just
 den anledningen.
 
 Rankad 1 (störst bedömd potentiell kurspåverkan) till 20 (minst, men
-fortfarande betydande). Uppdateras inte automatiskt - en framtida
-förbättring skulle kunna knyta an till en riktig nyhets-/händelsedata-
-källa, men ingen sådan är tillgänglig gratis idag.
+fortfarande betydande). Den här filen i sig uppdateras inte automatiskt,
+men triggers_store.py håller den LIVE listan vid 20 triggers: när en
+plats' datum har passerat ersätts den (nästa gång /api/triggers anropas,
+alltså inom minuter - gott om marginal mot "inom 1 dag") med nästa bolag
+ur RESERVE_TRIGGERS nedan, med ett nytt datum längre fram. TRIGGERS här
+är bara STARTuppsättningen som triggers_store.py utgår från första
+gången den körs.
 
 /api/triggers filtrerar dessutom bort allt äldre än idag eller mer än
 ~2 månader (60 dagar) framåt vid varje anrop (se app.py), så listan
-alltid håller sig inom det fönster användaren bad om även om den här
-filen inte uppdaterats på ett tag.
+alltid håller sig inom det fönster användaren bad om.
 """
 
 from datetime import datetime, timezone
@@ -121,4 +124,62 @@ TRIGGERS = [
         "outcome_up": outcome_up,
     }
     for rank, company, ticker, date_str, description, impact_down, outcome_down, impact_up, outcome_up in _RAW_TRIGGERS
+]
+
+
+# Reservbolag - dras på av triggers_store.py för att fylla en plats vars
+# händelse har passerat, så tidslinjen alltid håller 20 triggers även om
+# den här filen inte uppdaterats på länge (se triggers_store.py för hur
+# datum/rank tilldelas dynamiskt vid påfyllning). Ingen av dessa förekommer
+# redan i _RAW_TRIGGERS ovan.
+# (bolag, ticker, beskrivning, ~nedsida, negativt utfall, ~uppsida, positivt utfall)
+RESERVE_TRIGGERS = [
+    ("Nvidia", "NVDA", "Kvartalsrapport med orderläget för nästa generations AI-acceleratorer.",
+     15, "Tecken på avmattande AI-datacenterefterfrågan skulle slå hårt mot hela sektorns värdering.",
+     10, "Fortsatt stark orderingång skulle bekräfta att AI-investeringscykeln inte mattas av."),
+    ("Visa", "V", "Kvartalsrapport med uppdatering om den globala korttransaktionsvolymen.",
+     6, "Svagare konsumtion skulle väcka oro för en bredare avmattning i hushållens spending.",
+     5, "Fortsatt stabil transaktionstillväxt skulle visa att konsumenten står stark."),
+    ("Walmart", "WMT", "Kvartalsrapport som brukar spegla hur den prispressade konsumenten mår.",
+     6, "Svagare marginal eller försiktig prognos skulle oroa för en pressad låginkomstkonsument.",
+     5, "Stark försäljningstillväxt skulle visa att bolaget tar marknadsandelar i en tuff miljö."),
+    ("Nike", "NKE", "Kvartalsrapport med uppdatering om lagernivåer och återhämtningen i Kina.",
+     8, "Fortsatt svag efterfrågan i Kina skulle förlänga en redan långdragen turnaround.",
+     7, "Tecken på återhämtning i Kina och lägre rabatter skulle stärka marginalberättelsen."),
+    ("Salesforce", "CRM", "Kvartalsrapport med fokus på hur AI-agenten Agentforce omsätts i faktiska intäkter.",
+     10, "Svag Agentforce-adoption skulle väcka tvivel om bolagets AI-strategi.",
+     8, "Tydlig intäktstillväxt kopplad till Agentforce skulle bekräfta AI-satsningens värde."),
+    ("Pfizer", "PFE", "Kvartalsrapport med uppdatering om pipeline-projekt efter patentutgångarna på flera storsäljare.",
+     8, "Ytterligare besvikelser i pipelinen skulle förstärka oron för intäktstappet efter patentklippor.",
+     7, "Positiva pipeline-besked skulle visa att bolaget kan ersätta de förlorade intäkterna."),
+    ("Uber", "UBER", "Kvartalsrapport med uppdatering om lönsamheten i kärnaffären och självkörande-samarbetena.",
+     9, "Svagare marginal eller trögare tillväxt inom Mobility skulle oroa marknaden.",
+     7, "Stark tillväxt och nya självkörande-partnerskap skulle stärka den långsiktiga berättelsen."),
+    ("PayPal", "PYPL", "Kvartalsrapport med uppdatering om transaktionsmarginalen och konkurrensen från Apple Pay/Block.",
+     9, "Fortsatt marginalpress skulle förstärka bilden av ett bolag som tappar prissättningsmakt.",
+     7, "Stabiliserad marginal skulle visa att turnaround-arbetet under den nya ledningen fungerar."),
+    ("Walt Disney", "DIS", "Kvartalsrapport med uppdatering om streamingslönsamheten och parkbesökarnas spending.",
+     8, "Svagare parkbesök eller förnyade streamingförluster skulle oroa för två ben samtidigt.",
+     6, "Fortsatt streaminglönsamhet och starka parksiffror skulle bekräfta vändningen."),
+    ("Starbucks", "SBUX", "Kvartalsrapport som visar om \"Back to Starbucks\"-omstruktureringen börjar vända den fallande försäljningen.",
+     8, "Ytterligare fallande jämförbar försäljning skulle förlänga tvivlen på omstruktureringen.",
+     6, "Ett positivt trendbrott i jämförbar försäljning skulle vara ett viktigt bevis för att planen fungerar."),
+    ("Adobe", "ADBE", "Kvartalsrapport med fokus på hur Firefly/AI-verktygen påverkar prissättning och abonnemangstillväxt.",
+     9, "Tecken på att billigare AI-alternativ pressar priserna skulle oroa för bolagets marginalmodell.",
+     7, "Stark AI-driven abonnemangstillväxt skulle visa att bolaget själv drar nytta av AI-skiftet."),
+    ("Qualcomm", "QCOM", "Kvartalsrapport med uppdatering om licensintäkterna och diversifieringen bortom mobil-chip.",
+     8, "Svagare mobilmarknad utan motvikt från nya segment skulle väcka oro för beroendet av Apple/Android.",
+     6, "Stark tillväxt inom bil- och IoT-chip skulle visa att diversifieringen bortom mobilen fungerar."),
+    ("Shopify", "SHOP", "Kvartalsrapport med uppdatering om handlarnas tillväxt inför högsäsongen.",
+     10, "Avmattande handlarintäkter skulle väcka oro för att e-handelstillväxten mattas av brett.",
+     8, "Fortsatt stark bruttovaruvärdestillväxt skulle bekräfta att bolaget tar marknadsandelar."),
+    ("Spotify", "SPOT", "Kvartalsrapport med uppdatering om prishöjningarnas effekt på abonnenttillväxten och marginalen.",
+     8, "Tecken på ökat abonnentbortfall efter prishöjningarna skulle oroa för prissättningsmakten.",
+     6, "Fortsatt stark abonnenttillväxt trots prishöjningarna skulle bekräfta tjänstens starka ställning."),
+    ("Airbnb", "ABNB", "Kvartalsrapport med uppdatering om bokningstillväxten och den nya satsningen på tjänster utöver boende.",
+     8, "Avmattande bokningstillväxt skulle väcka oro för mättnad på kärnmarknaden.",
+     6, "Stark tillväxt inom de nya tjänsterna skulle visa att bolaget lyckas bredda affären."),
+    ("Novartis", "NVS", "Kvartalsrapport med uppdatering om pipeline-projekt inom hjärt-kärlsjukdomar och njursjukdomar.",
+     7, "Besvikelser i sena kliniska studier skulle skada förtroendet för pipelinen.",
+     6, "Positiva studieresultat skulle stärka bilden av en välfylld och diversifierad pipeline."),
 ]

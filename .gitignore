@@ -8,5 +8,6 @@ data/scale_ratings.json
 data/users.json
 data/user_ratings.json
 data/community.json
+data/triggers_state.json
 .venv/
 venv/

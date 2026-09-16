@@ -12,7 +12,8 @@ from scoring import analyze_ticker
 from yahoo_client import search_symbols, search_by_industry, get_chart_data, CHART_RANGES
 from history_store import record_result, recent_n
 from config.metric_catalog import METRIC_CATALOG, BUILTIN_PROFILE_ROWS
-from triggers_data import TRIGGERS, TRIGGERS_DISCLAIMER
+from triggers_data import TRIGGERS_DISCLAIMER
+from triggers_store import get_triggers
 
 app = Flask(__name__)
 # Krävs för att signera inloggningskakan (Flask-sessionen). Sätt
@@ -186,15 +187,14 @@ def builtin_profiles():
 
 @app.route("/api/triggers")
 def triggers():
-    # Se triggers_data.py - en handplockad lista, INTE en live datakälla.
-    # disclaimer skickas alltid med så frontend kan visa den synligt.
-    # Filtrerar till "nu och max ~2 månader framåt" vid varje anrop - inte
-    # bara vid författandet av triggers_data.py - så listan aldrig visar
-    # redan passerade händelser eller (om filen någon gång utökas) något
-    # längre bort än det fönster som efterfrågades.
+    # Se triggers_data.py/triggers_store.py - en handplockad, självpåfyllande
+    # lista, INTE en live datakälla. disclaimer skickas alltid med så
+    # frontend kan visa den synligt. get_triggers() fyller redan på utgångna
+    # platser med nya, men filtrerar ändå till "nu och max ~2 månader
+    # framåt" här också som ett extra skyddsnät.
     now = time.time()
     window_end = now + 60 * 86400
-    upcoming = [t for t in TRIGGERS if now <= t["date"] <= window_end]
+    upcoming = [t for t in get_triggers() if now <= t["date"] <= window_end]
     return jsonify({"disclaimer": TRIGGERS_DISCLAIMER, "triggers": upcoming})
 
 
