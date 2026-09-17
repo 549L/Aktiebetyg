@@ -348,6 +348,7 @@ function renderResult(data) {
     });
 
     result.classList.remove("hidden");
+    result.scrollIntoView({ behavior: "smooth", block: "start" });
 
     currentTicker = data.ticker;
     if (currentChartPeriod === "1y" && data.chart) {
