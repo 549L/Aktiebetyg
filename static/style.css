@@ -169,6 +169,15 @@ h1 {
     font-size: 2rem;
 }
 
+/* Använd av porträttet på skalans grundare (Buffett/Graham) - se
+   PHILOSOPHER_AVATARS i app.js. Lite större än avatar-sm (används i
+   listorna) eftersom den sitter mer framträdande i analysrubriken. */
+.avatar-md {
+    width: 32px;
+    height: 32px;
+    vertical-align: middle;
+}
+
 #user-profile-header {
     display: flex;
     align-items: center;
@@ -2040,6 +2049,10 @@ section.panel-collapsed .panel-body {
 
 .industry-tag:empty {
     display: none;
+}
+
+#result-scale-avatar {
+    margin-left: 10px;
 }
 
 .scale-badge {

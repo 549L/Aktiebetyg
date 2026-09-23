@@ -285,6 +285,7 @@ function renderResult(data) {
         : "";
     document.getElementById("ticker-industry").textContent = data.industry || data.sector || "";
     document.getElementById("result-scale-badge").textContent = currentScaleDisplayName() || "";
+    updateScaleAvatar(document.getElementById("result-scale-avatar"), currentScaleEntry());
     document.getElementById("company-description").textContent = data.description || "";
     const viewLabel = data.view_style_label || VIEW_STYLE_LABELS[data.view_style] || null;
     document.getElementById("scale-label").textContent = data.scale
@@ -701,7 +702,23 @@ function buildScaleRow(entry) {
     nameSpan.className = "scale-row-name";
     nameSpan.textContent = name;
     nameSpan.addEventListener("click", () => selectScale(scaleId));
-    topRow.appendChild(nameSpan);
+
+    const avatarInfo = philosopherAvatarFor(entry);
+    if (avatarInfo) {
+        const identity = document.createElement("div");
+        identity.className = "user-row-identity";
+        const avatarEl = document.createElement("span");
+        avatarEl.className = "avatar avatar-sm";
+        const img = document.createElement("img");
+        img.src = avatarInfo.src;
+        img.alt = avatarInfo.alt;
+        avatarEl.appendChild(img);
+        identity.appendChild(avatarEl);
+        identity.appendChild(nameSpan);
+        topRow.appendChild(identity);
+    } else {
+        topRow.appendChild(nameSpan);
+    }
 
     // Man får bara redigera/ta bort betygsskalor man själv skapat (en
     // admin undantaget) - annars skulle vem som helst inloggad kunna ändra
@@ -805,9 +822,38 @@ function selectScale(scaleId) {
 // en egen markering i analysrutan (se renderResult) så man alltid vet
 // vilken skala man tittar på, istället för att sidans färg ändrades (togs
 // bort - enda stället man numera ändrar sidans färg är i sin egen profil).
+function currentScaleEntry() {
+    return allScaleEntries().find((e) => e.scaleId === currentScaleId) || null;
+}
+
 function currentScaleDisplayName() {
-    const entry = allScaleEntries().find((e) => e.scaleId === currentScaleId);
+    const entry = currentScaleEntry();
     return entry ? entry.name : null;
+}
+
+// Porträtt av respektive skalas grundare - visas bredvid skalnamnet både i
+// analysrutan (se renderResult) och i skallistan (se buildScaleRow), så man
+// direkt känner igen vems filosofi man tittar på.
+const PHILOSOPHER_AVATARS = {
+    "Warren Buffets Scale": { src: "/static/images/warren_buffett.jpg", alt: "Warren Buffett" },
+    "Benjamin Grahams Scale": { src: "/static/images/benjamin_graham.jpg", alt: "Benjamin Graham" },
+};
+
+// Bara skalor 549L själv skapat ska visa ett porträtt - annars skulle vem
+// som helst kunna få Buffetts bild på sin egen skala bara genom att döpa
+// den likadant.
+function philosopherAvatarFor(entry) {
+    if (!entry || !entry.isCustom || entry.createdBy !== "549L") return null;
+    return PHILOSOPHER_AVATARS[entry.name] || null;
+}
+
+function updateScaleAvatar(el, entry) {
+    const info = philosopherAvatarFor(entry);
+    el.classList.toggle("hidden", !info);
+    if (!info) return;
+    const img = el.querySelector("img");
+    img.src = info.src;
+    img.alt = info.alt;
 }
 
 // ---------------------------------------------------------------------------
