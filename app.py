@@ -22,51 +22,6 @@ app = Flask(__name__)
 # varje omstart - lokalt räcker en hårdkodad utvecklingsnyckel.
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-osaker-nyckel-andra-i-produktion")
 
-# TILLFÄLLIG engångsseedning av "Benjamin Grahams Scale" på 549L-kontot -
-# skapandet kräver annars en inloggad session (create_scale sätter
-# created_by från session["username"]), men det finns inget sätt att logga
-# in som 549L här utan lösenordet. Körs en gång vid processtart (en
-# gunicorn-worker på Render), skyddad av en koll så den inte skapar
-# dubbletter vid omstart. Tas bort igen så snart den bekräftats köra live.
-if not any(
-    s.get("name") == "Benjamin Grahams Scale" and s.get("created_by") == "549L"
-    for s in scales_store.list_scales()
-):
-    scales_store.create_scale(
-        "Benjamin Grahams Scale",
-        {
-            "default": {
-                "metrics": [
-                    {"key": "pe_ratio", "ideal": 12, "tolerance": 22, "weight_pct": 28},
-                    {"key": "price_to_book", "ideal": 1.0, "tolerance": 2.5, "weight_pct": 27},
-                    {"key": "current_ratio", "ideal": 2.2, "tolerance": 1.0, "weight_pct": 12},
-                    {"key": "debt_to_equity", "ideal": 40, "tolerance": 160, "weight_pct": 10},
-                    {"key": "dividend_yield", "ideal": 0.025, "tolerance": 0.025, "weight_pct": 10},
-                    {"key": "profit_margin", "ideal": 0.08, "tolerance": 0.08, "weight_pct": 8},
-                    {"key": "revenue_growth", "ideal": 0.05, "tolerance": 0.08, "weight_pct": 5},
-                ]
-            },
-            "sector:Financial Services": {
-                "metrics": [
-                    {"key": "price_to_book", "ideal": 1.0, "tolerance": 2.0, "weight_pct": 30},
-                    {"key": "roe", "ideal": 0.10, "tolerance": 0.06, "weight_pct": 25},
-                    {"key": "pe_ratio", "ideal": 10, "tolerance": 16, "weight_pct": 20},
-                    {"key": "dividend_yield", "ideal": 0.035, "tolerance": 0.025, "weight_pct": 15},
-                    {"key": "profit_margin", "ideal": 0.15, "tolerance": 0.12, "weight_pct": 10},
-                ]
-            },
-            "sector:Real Estate": {
-                "metrics": [
-                    {"key": "dividend_yield", "ideal": 0.045, "tolerance": 0.03, "weight_pct": 30},
-                    {"key": "price_to_book", "ideal": 1.0, "tolerance": 1.5, "weight_pct": 25},
-                    {"key": "net_debt_to_ebitda", "ideal": 6.0, "tolerance": 3.0, "weight_pct": 25},
-                    {"key": "profit_margin", "ideal": 0.15, "tolerance": 0.12, "weight_pct": 20},
-                ]
-            },
-        },
-        created_by="549L",
-    )
-
 # Inloggnings-/registreringsflödet och statiska filer är alltid publika
 # (annars skulle inte ens inloggningsformuläret gå att visa/stila). Se
 # users_store.py för kontona - ett admin-konto ("549L") skapas automatiskt.
